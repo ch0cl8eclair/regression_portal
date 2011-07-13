@@ -1,0 +1,35 @@
+    {% if package_list %}
+        <p>Packages:</p>
+        <ul>
+        {% for pkg in package_list %}
+            <li><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ pkg }}/">{{ pkg }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No packages found for project {{ project.project }} branch {{ project.branch }} in release {{release.name}}.</p>
+    {% endif %}
+    <br>
+    {% if dirs_hash %}
+        <p>Directories:{{dirs_hash|length}}</p>
+        <ul>
+        {% for dir_obj in dirs_hash %}
+            <li><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ package }}/{{ dir_obj.layer }}/{{ dir_obj.directory_path }}/">{{ dir_obj.layer }} / {{ dir_obj.directory_path }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No dirs found for project {{ project.project }} branch {{ project.branch }} in release {{release.name}} in package {{ package }}.</p>
+    {% endif %}
+    <br>
+    
+    {% if files_list %}
+        <p>{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ package }}/{{ layer }}/{{ directory }}</p>
+        <p>Files:</p>
+        <table>
+        {% for file in files_list %}
+            <tr><td><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ package }}/{{ layer }}/{{ directory }}/{{ file.file.file_name }}" target="_blank">{{ file.file.file_name }}</a></td><td>{{file.getStatusAsStr}}</td></tr>
+        {% endfor %}
+        </table>
+    {% else %}
+        <p>No files found for project {{ project.project }} branch {{ project.branch }} in release {{release.name}} in package {{ package }}.</p>
+    {% endif %}
+    <br>

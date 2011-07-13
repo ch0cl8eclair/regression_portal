@@ -1,0 +1,19 @@
+    {% extends "base.html" %}
+    
+    {# Clear the side bar since there are no packages to display yet #}
+    {% block sidebar %}
+    {% endblock sidebar %}
+
+    {% block content %}
+        <h2>Projects</h2>
+        {% if project_list %}
+            <p>The following projects are available to view:</p>
+            <ul>
+            {% for proj in project_list %}
+                <li><a href="/regression/{{ proj.project }}/{{ proj.branch }}/">{{ proj.project }} {{proj.branch}}</a></li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No projects found within system.</p>
+        {% endif %}
+    {% endblock content %}

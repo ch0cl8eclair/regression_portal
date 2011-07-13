@@ -1,0 +1,123 @@
+* {
+  margin:0;
+  padding:0;
+}
+
+body {
+  font: .8em "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+}
+
+#wrapper{
+  margin:2px 0px 10px 0px;
+}
+
+#wrapper a{
+  text-decoration: none;
+}
+
+#tabContainer {
+  padding:15px;
+  background-color:#2e2e2e;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+}
+
+.tabs{
+  height:30px;
+}
+
+.tabs > ul{
+  font: 1em;
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+
+.tabs a:link,a:visited
+{
+display:block;
+font-weight:bold;
+text-align:center;
+
+padding:7px 10px;
+text-decoration:none;
+color:#FFFFFF;
+}
+
+.tabs > ul > li {
+  margin:0 2px 0 0;
+  float:left;
+  color:#FFFFFF;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -moz-border-radius-topleft: 4px;
+  -moz-border-radius-topright: 4px;
+  -moz-border-radius-bottomright: 0px;
+  -moz-border-radius-bottomleft: 0px;
+  border-top-left-radius:4px;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 0px;
+  border-bottom-left-radius: 0px;
+  background: rgb(181,189,200); /* Old browsers */
+background: -moz-linear-gradient(top, rgba(181,189,200,1) 0%, rgba(130,140,149,1) 36%, rgba(40,52,59,1) 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(181,189,200,1)), color-stop(36%,rgba(130,140,149,1)), color-stop(100%,rgba(40,52,59,1))); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top, rgba(181,189,200,1) 0%,rgba(130,140,149,1) 36%,rgba(40,52,59,1) 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top, rgba(181,189,200,1) 0%,rgba(130,140,149,1) 36%,rgba(40,52,59,1) 100%); /* Opera11.10+ */
+background: -ms-linear-gradient(top, rgba(181,189,200,1) 0%,rgba(130,140,149,1) 36%,rgba(40,52,59,1) 100%); /* IE10+ */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b5bdc8', endColorstr='#28343b',GradientType=0 ); /* IE6-9 */
+background: linear-gradient(top, rgba(181,189,200,1) 0%,rgba(130,140,149,1) 36%,rgba(40,52,59,1) 100%); /* W3C */
+
+}
+
+.tabs a:hover,a:active{
+color: #333;
+}
+
+.tabs > ul > li:hover{
+  background: #FFFFFF; /* old browsers */
+  background: -moz-linear-gradient(top, #FFFFFF 0%, #F3F3F3 10%, #F3F3F3 50%, #FFFFFF 100%); /* firefox */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#FFFFFF), color-stop(10%,#F3F3F3), color-stop(50%,#F3F3F3), color-stop(100%,#FFFFFF)); /* webkit */
+  cursor:pointer;
+  color: #333;
+}
+
+.tabs > ul > li.tabActiveHeader{
+  background: #FFFFFF; /* old browsers */
+  background: -moz-linear-gradient(top, #FFFFFF 0%, #F3F3F3 10%, #F3F3F3 50%, #FFFFFF 100%); /* firefox */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#FFFFFF), color-stop(10%,#F3F3F3), color-stop(50%,#F3F3F3), color-stop(100%,#FFFFFF)); /* webkit */
+  cursor:pointer;
+  color: #333;
+}
+
+.tabs > ul > li.tabActiveHeader a{
+  color: #333;
+}
+
+div.tabIframeWrapper {
+  width: 100%;
+}
+
+iframe.tabContent {
+  background-color: ffffff;
+  border: 1px solid #000000;
+  width: 100%;
+  height: 100%;
+}
+
+.tabDisplayArea {
+  -moz-border-radius-topleft: 0px;
+  -moz-border-radius-topright: 4px;
+  -moz-border-radius-bottomright: 4px;
+  -moz-border-radius-bottomleft: 4px;
+  border-top-left-radius: 0px;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 4px;
+  padding:10px 10px 25px;
+  background: #FFFFFF; /* old browsers */
+  background: -moz-linear-gradient(top, #FFFFFF 0%, #FFFFFF 90%, #e4e9ed 100%); /* firefox */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#FFFFFF), color-stop(90%,#FFFFFF), color-stop(100%,#e4e9ed)); /* webkit */
+  margin:0px 0px 0px 0px;
+  color:#333;
+}

@@ -1,0 +1,28 @@
+    {% extends "base.html" %}
+
+    {% block head %}
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+    <script type="text/javascript" src="/static/swfobject.js"></script>
+    <script type="text/javascript">
+    	swfobject.embedSWF(
+    	  "/static/open-flash-chart.swf", "chart_demo",
+    	  "600", "300", "9.0.0", "/static/expressInstall.swf",
+    	  {"data-file":"/data/{{ chart_type }}"} );
+    </script>
+    {% endblock head %}
+    
+    {# Populate the sidebar with the chart links #}
+    {% block sidebar %}    
+    <ul>
+    {% if project %}
+        <li><a href="/regression/{{ project.project }}/{{ project.branch }}/ReleaseTotals/">Release totals chart</a></li>
+        <li><a href="/regression/{{ project.project }}/{{ project.branch }}/ReleasePassRate/">Release pass chart</a></li>
+    {% endif %}
+    </ul>
+    {% endblock sidebar %}
+
+    {% block content %}
+    {# display the pie chart for the release #}
+    <div class="chart" id="chart_demo"></div>  
+    {% endblock content %}
