@@ -1,19 +1,20 @@
-    {% extends "base.html" %}
-    
-    {# Clear the side bar since there are no packages to display yet #}
-    {% block sidebar %}
-    {% endblock sidebar %}
+    {% extends "basedetails.html" %}
 
-    {% block content %}
-        <h2>Projects</h2>
-        {% if project_list %}
-            <p>The following projects are available to view:</p>
-            <ul>
-            {% for proj in project_list %}
-                <li><a href="/regression/{{ proj.project }}/{{ proj.branch }}/">{{ proj.project }} {{proj.branch}}</a></li>
-            {% endfor %}
-            </ul>
-        {% else %}
-            <p>No projects found within system.</p>
-        {% endif %}
-    {% endblock content %}
+    {% block pagename %}Projects{% endblock pagename%}
+    
+    {% block pagecontent %}
+        <div class="spacer"></div>
+        <div>
+            <p>
+            {% if reg_params.project_list %}
+                <p>The following projects are available to view:</p>
+                <ul>
+                {% for proj in reg_params.project_list %}
+                    <li><a href="/regression/{{ proj.project }}/{{ proj.branch }}/">{{ proj.project }} {{proj.branch}}</a></li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>No projects found within system.</p>
+            {% endif %}
+        </div>
+    {% endblock pagecontent %}

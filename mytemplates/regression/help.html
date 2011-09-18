@@ -1,0 +1,24 @@
+    {% extends "base.html" %}
+
+    
+    {# Populate the sidebar with no links #}
+    {% block sidebar %}    
+    {% endblock sidebar %}
+
+    {% block content %}
+    {# General help and information on site #}
+    <h2>Help - Tool for Advanced Regression Analysis</h2>
+    <p>This tool has been developed to make checking the regression results easier,<br> it has the following key points:
+        <dl>
+        <ul>
+            <li><dt>Speed</dt></li>
+            <dd>All the regression data is compiled and processed only initially as opposed to each time a page is requested. Together with a caching framework, pages are served far more quickly.</dd>
+            <li><dt>Navigation</dt></li>
+            <dd>Simple urls allow the user to navigate to the section they are interested in simply by typing the location. the URL is heirarchical and is based on the regression's nature layout structure.</dd>
+            <li><dt>Graphs</dt></li>
+            <dd>Generated graphs allow you to see regression results in a more informative manner.</dd>
+            <li><dt>Dynamic</dt></li>
+            <dd>Constantly improved and extended with user recommendations to make your job easier.</dd>
+        </ul>
+        </dl>
+    {% endblock content %}

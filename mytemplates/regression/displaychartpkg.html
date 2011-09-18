@@ -1,0 +1,21 @@
+    {% extends "basechart.html" %}
+
+    {% block head %}
+    <script type="text/javascript" src="/static/swfobject.js"></script>
+    <script type="text/javascript">
+    	swfobject.embedSWF(
+    	  "/static/open-flash-chart.swf", "chart_demo",
+    	  "650", "600", "9.0.0", "/static/expressInstall.swf",
+    	  {"data-file":"/data/{{ chart_type }}/{{ reg_params.release.id }}"} );
+    </script>
+    {% endblock head %}
+
+    {% block content %}
+    {# display the pie chart for the release #}
+    <div class="chart" id="chart_demo"></div>
+    <p>
+        <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}">[Back to release view]</a>
+        <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/?type=package_fail">[Package Failures]</a>
+    </p>
+    {% endblock content %}
+    

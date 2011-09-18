@@ -1,88 +1,39 @@
-    {% extends "base.html" %}
-
-    {% block head %}
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <link rel="stylesheet" type="text/css" href="/static/style.css" />
-    <script type="text/javascript" src="/static/swfobject.js"></script>
-    <script type="text/javascript">
-    	swfobject.embedSWF(
-    	  "/static/open-flash-chart.swf", "chart_demo",
-    	  "600", "300", "9.0.0", "/static/expressInstall.swf",
-    	  {"data-file":"/data/pie"} );
-    </script>
+    {% extends "basedetails.html" %}
     
-    {% endblock head %}
-    {# Populate the sidebar with the list of packages if available #}
-    {% block sidebar %}
-    {% if package_list %}
-        <ul>
-        {% if project %}
-            <li><a href="/regression/{{ project.project }}/{{ project.branch }}/ReleaseTotals/">Release totals chart</a></li>
-            <li><a href="/regression/{{ project.project }}/{{ project.branch }}/ReleasePassRate/">Release pass chart</a></li>
-            <li></li>
-        {% endif %}
-        {% if release %}
-            <li><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ release.name }}/">Release</a></li>
-            <li></li>
-        {% endif %}
-        {% for pkg in package_list %}
-            <li><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ pkg }}/">{{ pkg }}</a></li>
-        {% endfor %}
-        </ul>
-    {% endif %}
-    {% endblock sidebar %}
-
-    {% block content %}    
-    <h2>Release details</h2>
-    <p>Release: {{ release.name }}
-    <p>Generated on: {{ release.date|date:'l jS \o\f F Y h:i a' }}
-    {% if release_stats %}
-        <p>Statistics for release: 
-        <table border="1" cellpadding="0" cellspacing="0" summary="" width="70%">
-            <tr>
-                <td>Pass Rate</td>
-                <td>Total</td>
-                <td>Passed</td>
-                <td>Failed</td>
-                <td>Void</td>
-                <td>New</td>
-                <td>Unknown</td>
-            </tr>
-            <tr>
-            <td>{{ release_stats.6 }}</td>
-            <td>{{ release_stats.5 }}</td>
-            <td>{{ release_stats.0 }}</td>
-            <td>{{ release_stats.1 }}</td>
-            <td>{{ release_stats.2 }}</td>
-            <td>{{ release_stats.3 }}</td>
-            <td>{{ release_stats.4|default:0 }}</td>
-            </tr>
-        </table>
-        
-        {# display the pie chart for the release #}
-        <div class="chart" id="chart_demo"></div>    
-    {% endif %}
+    {% block customhead %}
+        <script src="/static/local.js">
+        </script>
+    {% endblock customhead %}
+    
+    {% block pagename %}Scenarios List{% endblock pagename %}
+    
+    {% block pagecontent %}
+    
+    <div>
     
     
-    {% if dirs_hash %}
-        <p>Directories:{{dirs_hash|length}}</p>
-        <ul>
-        {% for dir_obj in dirs_hash %}
-            <li><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ package }}/{{ dir_obj.layer }}/{{ dir_obj.directory_path }}/">{{ dir_obj.layer }} / {{ dir_obj.directory_path }}</a></li>
-        {% endfor %}
-        </ul>
-    {% endif %}
-    
-    <br>
 
     {% if files_list %}
-        <p>{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ package }}/{{ layer }}/{{ directory }}</p>
-        <p>Files:</p>
-        
-        <table>
-        {% for file in files_list %}
-            <tr><td><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ release.name }}/{{ package }}/{{ layer }}/{{ directory }}/{{ file.file.file_name }}" target="_blank">{{ file.file.file_name }}</a></td><td>{{file.getStatusAsStr}}</td></tr>
-        {% endfor %}
+        <div class="spacer">
+            <span class="rgbutton" ><a href="#" id="scenarios_toggle_button" onclick="toggleScenariosDisplay()">Show Fail</a></span>
+        </div>
+        <div>
+        <table class="scenarios" id="scenarios_table">
+            <thead>
+            <tr>
+            <th>Scenario</th><th>Status</th><th>Duration</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for file in files_list %}
+                <tr>
+                    <td class=sname><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}/{{ reg_params.directoryStr }}/{{ file.file.file_name }}" target="_blank">{{ file.file.file_name }}</a></td><td class=sstatus>{{file.getStatusAsStr}}</td><td class=sduration>{{file.getDurationAsStr}}</td>
+                <tr/>
+            {% endfor %}
+            </tbody>
         </table>
+        </div>
     {% endif %}
-    {% endblock content %}
+    </div>
+    <div style="clear: both"></div>
+    {% endblock pagecontent %}

@@ -1,25 +1,19 @@
-    {% extends "base.html" %}
-    
-    {# Clear the side bar since there are no packages to display yet #}
-    {% block sidebar %}
-    <ul>
-    {% if project %}
-        <li><a href="/regression/{{ project.project }}/{{ project.branch }}/ReleaseTotals/">Release totals chart</a></li>
-        <li><a href="/regression/{{ project.project }}/{{ project.branch }}/ReleasePassRate/">Release pass chart</a></li>
-    {% endif %}
-    </ul>
-    {% endblock sidebar %}
+    {% extends "basedetails.html" %}    
 
-    {% block content %}
-        <h2>Releases</h2>
-        <p>The following releases are available:</p>
-        {% if release_list %}
-            <ul>
-            {% for rel in release_list %}
-                <li><a href="/regression/{{ project.project }}/{{ project.branch }}/{{ rel.name }}/">{{ rel.name }}</a></li>
-            {% endfor %}
-            </ul>
-        {% else %}
-            <p>No releases found for project: {{ project.project }} and branch: {{ project.branch }}.</p>
-        {% endif %}
-    {% endblock content %}
+    {% block pagename %}Releases{% endblock pagename%}
+    
+    {% block pagecontent %}
+        <div class="spacer"></div>
+        <div>
+            <p>The following releases are available:</p>
+            {% if reg_params.release_list %}
+                <ul>
+                {% for rel in reg_params.release_list %}
+                    <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ rel.name }}/">{{ rel.name }}</a></li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>No releases found for project: {{ reg_params.project.project }} and branch: {{ reg_params.project.branch }}.</p>
+            {% endif %}
+        </div>
+    {% endblock pagecontent %}

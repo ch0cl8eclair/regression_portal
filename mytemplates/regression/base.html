@@ -1,11 +1,17 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-{% block head %}
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<link rel="stylesheet" type="text/css" href="/static/style.css" />
-{% endblock %}
+<meta charset="utf-8" />
 <title>{% block title %}Fm Regression Monkey{% endblock%}</title>
+<link rel="stylesheet" type="text/css" href="/static/style.css" />
+{% block head %}
+{% endblock %}
+<!--[if IE]>
+    <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+<!--[if lte IE 7]>
+    <script src="js/IE8.js" type="text/javascript"></script><![endif]-->
+<!--[if lt IE 7]>
+    <link rel="stylesheet" type="text/css" media="all" href="css/ie6.css"/><![endif]-->
 </head>
 
 <body>
@@ -17,11 +23,19 @@
         
         <div id="menu">
             {% block top_menu %}
-        	<ul>
-            	<li class="menuitem"><a href="/regression/">Home</a></li>
-                <li class="menuitem"><a href="#">Stats</a></li>
-                <li class="menuitem"><a href="#">About</a></li>
-            </ul>
+        	<div id="menuspacer">
+                <ul id="navlist">
+                  <li id="home"><a href="/regression"></a></li>
+                  <li id="help"><a href="/regression/help"></a></li>
+                  {% if reg_params.project.branch %}
+                  <li id="bar"><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/ReleaseTotals/"></a></li>
+                  <li id="line"><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/ReleasePassRate/"></a></li>
+                  {% endif %}
+                  {% if reg_params.release %}
+                  <li id="pie"><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/"></a></li>
+                  {% endif %}
+                </ul>
+            </div>
             {% endblock %}
         </div>
         
@@ -33,15 +47,6 @@
                 <h3>Links</h3>
                 {% block sidebar %}
                 <ul>
-                    <li><a href="#">SEO</a></li>
-                    <li><a href="#">PHP</a></li>
-                    <li><a href="#">Ajax</a></li>
-                    <li><a href="#">jQuery</a></li>
-                    <li><a href="#">Web design</a></li>
-                    <li><a href="#">Web Programming</a></li>
-                    <li><a href="#">Content Creation</a></li>
-                    <li><a href="#">Internet Marketing</a></li>
-                    <li><a href="#">XHTML Templates</a></li>
                 </ul>
                 {% endblock %}
             </div>
@@ -50,7 +55,7 @@
         </div>
         
 		<div id="content">
-        
+        <a name="top"></a>
         <div id="content_top"></div>
         <div id="content_main">
             {% block content %}
@@ -72,7 +77,7 @@
         
         <div id="content_bottom"></div>
             {% block footer %}
-            <div id="footer"><h3><a href="/regression/">Home</a> | <a href="http://www.quackit.com">web tutorials</a> | <a href="http://www.htmlcodes.me">html codes</a> | <a href="http://www.free-templates.me">free templates</a></h3></div>
+            <div id="footer"><h3><a href="/regression/">Home</a> | <a href="#top">Top</a> | <a href="/">Fm Monkey Home</a></h3></div>
             {% endblock %}
       </div>
    </div>

@@ -1,0 +1,97 @@
+    {% extends "base.html" %}
+
+    {# Define the head and allow custom head includes #}
+    {% block head %}
+        <link rel="stylesheet" type="text/css" href="/static/local.css" />
+        {% block customhead %}
+        {% endblock customhead %}
+    {% endblock head %}
+
+    {# Populate the sidebar with the list of packages if available #}
+    {% block sidebar %}
+    {% if reg_params.packages_list %}
+        {% if pkg_hash_list %}
+            <ul>
+            {% for pkghash in pkg_hash_list %}
+                <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkghash.items.0.0 }}/"><span class="left">{{ pkghash.items.0.0 }}</span><span class="right">{{ pkghash.items.0.1.fail }}</span><span class="right">{{ pkghash.items.0.1.total|default:0 }}</span></a></li>
+                {% if pkghash.items.0.1.layers %}
+                    <ul>
+                    {% for layerhash in pkghash.items.0.1.layers %}
+                        <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkghash.items.0.0 }}/{{ layerhash.items.0.0 }}"><span class="left">{{ layerhash.items.0.0 }}</span><span class="right">{{ layerhash.items.0.1.fail }}</span><span class="right">{{ layerhash.items.0.1.total|default:0 }}</span></a></li>
+                        {% if layerhash.items.0.1.dirs %}
+                            <ul>
+                            {% for dirhash in layerhash.items.0.1.dirs %}
+                                <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkghash.items.0.0 }}/{{ layerhash.items.0.0 }}/{{ dirhash.items.0.0 }}"><span class="left">{{ dirhash.items.0.0 }}</span><span class="right">{{ dirhash.items.0.1.fail }}</span><span class="right">{{ dirhash.items.0.1.total|default:0 }}</span></a></li>
+                            {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endfor %}
+            </ul>
+        {% else %}
+            <ul>
+            {% for pkg in reg_params.packages_list %}
+                <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkg }}/">{{ pkg }}</a></li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endif %}
+    {% endblock sidebar %}
+    
+    {# Define the block content and allow pages to customize via the pagecontent tag #}
+    {% block content %}
+        {# Define breadcrumbs #}
+        <p class="breadcrumb">
+            {% if reg_params.projectStr %}
+                
+                {% if reg_params.branchStr %}
+                    <a href="/regression/{{ reg_params.project.project }}">{{ reg_params.project.project|upper }}</a>
+                    
+                    {% if reg_params.release %}
+                        <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}">{{ reg_params.branchStr|upper }}</a>
+                        
+                        {% if reg_params.packageStr %}
+                            <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}">{{ reg_params.release.name }}</a>
+                            
+                            {% if reg_params.layerStr %}
+                                <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}">{{ reg_params.packageStr }}</a>
+                                
+                                {% if reg_params.directoryStr %}
+                                    <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}">{{ reg_params.layerStr }}</a>
+                                    {% if reg_params.directoryStr %}
+                                        {{ reg_params.directoryStr|upper }}
+                                    {% endif %}
+                                {% else %}
+                                    {{ reg_params.layerStr }}
+                                {% endif %} {# dir #}
+                            {% else %}
+                                {{ reg_params.packageStr }}
+                            {% endif %} {# layer #}
+                        {% else %}
+                            {{ reg_params.release.name }}
+                        {% endif %} {# package #}
+                        
+                    {% else %}
+                        {{ reg_params.branchStr|upper }}
+                    {% endif %} {# release #}
+                {% else %}
+                    {{ reg_params.projectStr|upper }}
+                {% endif %} {# branch #}
+            {% else %}
+                &nbsp;
+            {% endif %} {# project #}
+        </p>
+        
+        {# Define heading #}
+        <div id="heading">
+            <h2>{% block pagename %}{% endblock pagename %}</h2>
+        </div>
+        <div class=spacer>
+        </div>
+        
+        {# Allow page content #}
+        {% block pagecontent %}
+        {% endblock pagecontent %}
+    {% endblock content %}

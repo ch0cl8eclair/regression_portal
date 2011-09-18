@@ -1,0 +1,119 @@
+    {% extends "basedetails.html" %}
+
+    {% block customhead %}
+        <script type="text/javascript" src="/static/swfobject.js"></script>
+        <script type="text/javascript">
+            swfobject.embedSWF(
+              "/static/open-flash-chart.swf", "chart_demo",
+              "375", "300", "9.0.0", "/static/expressInstall.swf",
+              {"data-file":"/data/pie/{{ reg_params.release.id }}"} );
+        </script>
+    {% endblock customhead %}
+    
+    {% block pagename%}Release details{% endblock pagename %}
+    
+    {% block pagecontent %}
+    <div>
+        <div class="summary_wrapper">
+        	<table class="summary" cellpadding="3" cellspacing="4">
+                <tr>
+                    <td class="sumheading">Release</td>
+					<td class="sumvalue">{{ reg_params.release.name }}</td>
+				</tr>
+                <tr>
+                    <td class="sumheading">Branch</td>
+                    <td class="sumvalue">{{ reg_params.branchStr }}</td>
+				</tr>
+                <tr>
+					<td class="sumheading">Date</td>
+                    <td class="sumvalue">{{ reg_params.release.date|date:'D jS M Y, G:i' }}</td>
+				</tr>
+                <tr>
+					<td class="sumheading">Tag</td>
+                    <td class="sumvalue">{{ reg_params.branchStr }}_{{ reg_params.release.name }}</td>
+				</tr>
+            </table>
+            <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/?type=package_fail">[view package failures]</a>
+            <p>
+            <p>
+            <ul class="releaseWarnings">
+            {% if reg_params.compliance_warning %}
+            <li>Warning compliance failures exist</li>
+            {% endif %}
+            {% if reg_params.project.comment %}
+            <li>{{ project.comment }}</li>
+            {% endif %}
+            </ul>
+        </div>
+        <div class="summary_chart" id="chart_demo">
+        </div>
+        <div class="summary_breakdown">
+        {% if reg_params.release_stats %}
+        {# display the pie chart for the release #}
+            <table border="1" cellpadding="2" cellspacing="0" summary="" class="summaryFiguresTable">
+                <tr>
+                    <th class="passrate">Pass Rate</th>
+                    <th>Total</th>
+                    <th>Passed</th>
+                    <th>Failed</th>
+                    <th>Void</th>
+                    <th>New</th>
+                    <th>Misc</th>
+                </tr>
+                <tr>
+                    <td>{{ reg_params.release_stats.6 }}</td>
+                    <td>{{ reg_params.release_stats.5 }}</td>
+                    <td>{{ reg_params.release_stats.0 }}</td>
+                    <td>{{ reg_params.release_stats.1 }}</td>
+                    <td>{{ reg_params.release_stats.2 }}</td>
+                    <td>{{ reg_params.release_stats.3 }}</td>
+                    <td>{{ reg_params.release_stats.4|default:0 }}</td>
+                </tr>
+            </table>
+        {% endif %}
+        </div>
+    </div>
+    <div style="width: 600px; float: left;text-align: left;">
+    
+    
+    {% if dirs_hash %}
+        <p>Directories</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Directory</th><th>Pass</th><th>Fail</th><th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for dir_obj in dirs_hash %}
+                <tr>
+                    <td>
+                        <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ dir_obj.layer }}/{{ dir_obj.directory_path }}/">{{ dir_obj.directory_path }}</a>
+                    </td>
+                    <td>
+                    </td>
+                    <td>
+                    </td>
+                    <td>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    
+    <br>
+
+    {% if files_list %}
+        <p>{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}/{{ reg_params.directoryStr }}</p>
+        <p>Files:</p>
+        
+        <table>
+        {% for file in files_list %}
+            <tr><td><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ package }}/{{ layer }}/{{ directory }}/{{ file.file.file_name }}" target="_blank">{{ file.file.file_name }}</a></td><td>{{file.getStatusAsStr}}</td></tr>
+        {% endfor %}
+        </table>
+    {% endif %}
+    </div>
+    <div style="clear: both"></div>
+    {% endblock pagecontent %}

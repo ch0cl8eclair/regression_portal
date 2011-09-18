@@ -1,0 +1,15 @@
+<html>
+<body>
+<p>{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.releaseStr }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}/{{ reg_params.directoryStr }}/{{ reg_params.filenameStr }}</p>
+<p>Summary of file's regression pass history:</p>
+{% if historical_status_list %}
+    <table>
+    {% for stat_item in historical_status_list %}
+        <tr><td>{{ stat_item.release_name }}</td><td>{{ stat_item.status}}</td></tr>
+    {% endfor %}
+    </table>
+{% else %}
+<p>Historical History data not available</p>
+{% endif %}
+</body>
+<html>
