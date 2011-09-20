@@ -1,150 +1,326 @@
-from django.shortcuts import get_object_or_404, render_to_response
-from django.http import HttpResponseRedirect, HttpResponse
+from django.shortcuts import get_object_or_404, get_list_or_404, render_to_response
+from django.http import HttpResponseRedirect, HttpResponse, Http404
 from regr.models import *
+from regr.utils import process_package_stats_list
 from converttocsv import StatusTotals
 from django.db.models import Count
 # for the pie chart generation
-from pyofc2  import * 
+from pyofc2  import *
 import random
 import time
 
-# Create your views here.
-def welcome(request):
-    #return HttpResponse("welcome")
-    return render_to_response('index.html')
+class RegressionRequestWrapper:
+    '''This class wraps the http url parameters and aids with the retrieval of the appropriate model objects'''
 
-def winapproach(request):
-    return HttpResponse("winapproach")
+    def __init__(self, projectStr=None, branchStr=None, releaseStr=None, packageStr=None, layerStr=None, directoryStr=None, filenameStr=None):
+        self.projectStr    = projectStr
+        self.branchStr     = branchStr
+        self.releaseStr    = releaseStr
+        self.packageStr    = packageStr
+        self.layerStr      = layerStr
+        self.directoryStr  = directoryStr
+        self.filenameStr   = filenameStr
+        self.compliance_warning = False
+        if filenameStr is not None:
+            self.lognameStr    = filenameStr.replace('.scn', '.log')
+            self.diffnameStr   = filenameStr.replace('.scn', '.diff')
 
-def code_paths(request):
-    return HttpResponse("code paths")
+    def getProjectsList(self):
+        '''Returns a list of all projects in the system'''
+        self.project_list = get_list_or_404(CodeBase)
+        return self.project_list
 
-def regression(request):
-    return HttpResponse("regression")
+    def getBranchList(self):
+        '''Returns a list of branches for the given project'''
+        if (self.projectStr):
+            self.project_list = get_list_or_404(CodeBase, project__exact=self.projectStr)
+            return self.project_list
+        return None ##TODO return 404
 
-def links(request):
-    return HttpResponse("links")
+    def getCodeBase(self):
+        '''Gets the specific codebase object ie project-branch eg FM-DEV'''
+        self.project = get_object_or_404(CodeBase, project__exact=self.projectStr, branch__exact=self.branchStr)
+        return self.project
 
-# Lists all entered projects ie FM/CM
-def list_projects(request):
-    project_list = CodeBase.objects.all()
-    return render_to_response('listprojects.html', {'project_list': project_list})
-    
-# Lists all branches for the selected project ie DEV/PROD
-def list_branches(request, project):
-    project_list = CodeBase.objects.filter(project__exact=project)
-    return render_to_response('listprojects.html', {'project_list': project_list})
+    def getReleaseList(self):
+        '''Gets the list of release for the select project'''
+        self.getCodeBase()
+        ## TODO again check for null and return 404
+        self.release_list = self.project.release_set.values()
+        return self.release_list
 
-# Lists all releases for the selected branch ie 24-0-219 etc
-def list_releases(request, project, branch):
-    selected_project = CodeBase.objects.get(project__exact=project, branch__exact=branch)
-    # todo should we return 404 here?
-    release_list = selected_project.release_set.values()
-    return render_to_response('listreleases.html', {'release_list': release_list, 'project':selected_project})
+    def getRelease(self):
+        '''Gets the specific release object'''
+        self.getCodeBase()
+        ## TODO check for null release
+        self.release = self.project.release_set.get(name__exact=self.releaseStr)
+        return self.release
 
-# Displays the release figures totals chart
-def display_totals_chart(request, project, branch):
-    selected_project = CodeBase.objects.get(project__exact=project, branch__exact=branch)
-    return render_to_response('displaychart.html', {'chart_type': "bar", 'project':selected_project})
-    
-# Displays the release pass rate chart
-def display_pass_rate_chart(request, project, branch):
-    selected_project = CodeBase.objects.get(project__exact=project, branch__exact=branch)
-    return render_to_response('displaychart.html', {'chart_type': "line", 'project':selected_project})
-    
-# Displays the details for the given scenario file
-def display_file_details(request, project, branch, release, package, layer, directory, filename):
-    selected_project = CodeBase.objects.get(project__exact=project, branch__exact=branch)
-    return render_to_response('listfiledetails.html', {'project' : selected_project, \
-                                                       'release' : release, \
-                                                       'package' : package, \
-                                                       'layer' : layer, \
-                                                       'directory' : directory, \
-                                                       'filename' : filename, \
-                                                       'logname' : filename.replace('.scn', '.log'), \
-                                                       'diffname' : filename.replace('.scn', '.diff')})
+    def getFileHistory(self):
+        '''Gets the regression run history per release for a given file'''
+        self.getCodeBase()
+        release_result_list = RegressionResult.objects.filter(release__code_base__id__exact=self.project.id,
+                                                                 file__package__exact=self.packageStr,
+                                                                 file__layer__exact=self.layerStr,
+                                                                 file__directory_path__exact=self.directoryStr,
+                                                                 file__file_name__exact=self.filenameStr).values('release__name', 'status')
+        stats_class = StatusTotals()
+        self.historical_status_list = []
+        for stat_item in release_result_list:
+            new_hash = {}
+            new_hash['release_name'] = str(stat_item['release__name'])
+            new_hash['status'] = stats_class.getStatusStr(stat_item['status'])
+            self.historical_status_list.append(new_hash)
 
-# Gets the regression pass status for the selected file over all the releases.
-def display_file_history(request, project, branch, release, package, layer, directory, filename):
-    selected_project = CodeBase.objects.get(project__exact=project, branch__exact=branch)
-    
-    historical_status_list = RegressionResult.objects.filter(release__code_base__id__exact=selected_project.id, file__package__exact=package, file__layer__exact=layer, file__directory_path__exact=directory, file__file_name__exact=filename).values('release__name', 'status')
-    stats_class = StatusTotals()
-    processed_list = []
-    for stat_item in historical_status_list:
-        new_hash = {}
-        new_hash['release_name'] = str(stat_item['release__name'])
-        new_hash['status'] = stats_class.getStatusStr(stat_item['status'])
-        processed_list.append(new_hash)
-    
-    return render_to_response('listfilehistory.html', {'project' : selected_project, \
-                                                       'release' : release, \
-                                                       'package' : package, \
-                                                       'layer' : layer, \
-                                                       'directory' : directory, \
-                                                       'filename' : filename, \
-                                                       'historical_status_list':processed_list})
-    
+        return self.historical_status_list
 
-def display_results(request, project, branch, release, package='all', layer='all', directory='all'):
-    selected_project = CodeBase.objects.get(project__exact=project, branch__exact=branch)
-    # todo should we return 404 here?
-    selected_release = selected_project.release_set.get(name__exact=release)
-    # list of packages for the release
-    packages_hash = selected_release.files.values('package').order_by('package').distinct()
-    packages_list = [str(x.get('package')) for x in packages_hash]
-    
-    # get the list of dirs for the package
-    dirs_hash = None
-    release_stats = {}
-    if package != 'all':
-        if layer != 'all':
-            dirs_hash = selected_release.files.filter(package__exact=package, layer__exact=layer).values('layer', 'directory_path').order_by('layer').order_by('directory_path').distinct()
-        else:
-            dirs_hash = selected_release.files.filter(package__exact=package).values('layer', 'directory_path').order_by('directory_path').distinct()
-        #dirs_list = [(str(x.get('layer')), str(x.get('directory_path'))) for x in dirs_hash]
-    else:
-        # Get top level stats for the release.
-        stats = RegressionResult.objects.filter(release__id__exact=1).values('status').annotate(Count('status')).order_by('status')
+    def getPackagesList(self):
+        '''Gets a list of the packages for the current release'''
+        selected_release = self.getRelease()
+        packages_hash = selected_release.files.values('package').order_by('package').distinct()
+        self.packages_list = [str(x.get('package')) for x in packages_hash]
+        return self.packages_list
+
+    def getPackageStats(self, releaseQuerySet):
+        '''Gets the package stats for a given release, this reuses a queryset which just has the results for the matched release'''
+        '''
+        { pkgname: {pass: int,
+                    fail: int,
+                    layers: { layername : { pass: int,
+                                            fail: int,
+                                            dirs: { dirname : { pass: int,
+                                                                fail: int }
+                                                  }
+                                          }
+                            }
+                    }
+        }
+        '''
+        stats = releaseQuerySet.values('status').annotate(Count('status')).order_by('status')
         total_cases = 0
         pass_cases = 0
         fail_cases = 0
-        for stat_item in stats:
-            total_cases = total_cases + stat_item['status__count']
-            release_stats[stat_item['status']] = str(stat_item['status__count'])
-            if stat_item['status'] == 0:
-                pass_cases = int(stat_item['status__count'])
-            elif stat_item['status'] == 1:
-                fail_cases = int(stat_item['status__count'])
-        release_stats[5] = total_cases
-        # Remember that the pass rate should include pass, void and new, and not just pass!
-        release_stats[6] = round((float(total_cases - fail_cases) / total_cases) * 100, 2)
-        
-    # get the list of files for the directory
-    files_list = None
-    print "value of dir is: %s\n" % directory
-    #template_file = 'listresults.html'
-    template_file = 'listfiles.html'
-    if directory != 'all':
-        
-        if layer != 'all':
-            files_list = RegressionResult.objects.filter(file__package__exact=package, file__directory_path__exact=directory, release__id__exact=selected_release.id)
-        else:
-            files_list = RegressionResult.objects.filter(file__package__exact=package, file__layer__exact=layer, file__directory_path__exact=directory, release__id__exact=selected_release.id)
-        print "number of files found: %d " % len(files_list)
-        
-    
-    return render_to_response(template_file, {'package_list' : packages_list, \
-                                                              'project' : selected_project, \
-                                                              'release' : selected_release, \
-                                                              'package' : package, \
-                                                              'layer' : layer, \
-                                                              'directory' : directory, \
-                                                              'dirs_hash' : dirs_hash, \
-                                                              'files_list' : files_list, \
-                                                              'release_stats' : release_stats})
+        if releaseQuerySet:
+            for stat_item in stats:
+                total_cases = total_cases + stat_item['status__count']
+                self.release_stats[stat_item['status']] = str(stat_item['status__count'])
+                if stat_item['status'] == 0:
+                    pass_cases = int(stat_item['status__count'])
+                elif stat_item['status'] == 1:
+                    fail_cases = int(stat_item['status__count'])
 
-def chart_data2(request, type='bar'):
+    def getReleaseStats(self):
+        '''Gets the top level stats for the current release'''
+        self.release_stats = {}
+        stats = RegressionResult.objects.filter(release__id__exact=self.release.id).values('status').annotate(Count('status')).order_by('status')
+        total_cases = 0
+        pass_cases = 0
+        fail_cases = 0
+        if stats:
+            for stat_item in stats:
+                total_cases = total_cases + stat_item['status__count']
+                self.release_stats[stat_item['status']] = str(stat_item['status__count'])
+                if stat_item['status'] == 0:
+                    pass_cases = int(stat_item['status__count'])
+                elif stat_item['status'] == 1:
+                    fail_cases = int(stat_item['status__count'])
+            self.release_stats[5] = total_cases
+            # Remember that the pass rate should include pass, void and new, and not just pass!
+            self.release_stats[6] = round((float(total_cases - fail_cases) / total_cases) * 100, 2)
+        return self.release_stats
+
+    def setComplianceWarning(self, complianceFailureExist):
+        '''Sets the compliance failure warnings exist'''
+        self.compliance_warning = complianceFailureExist
+
+###############################################################################
+# Define main html template files
+###############################################################################
+WELCOME_HTML         = 'welcome.html'
+HELP_HTML            = 'help.html'
+LIST_CODEBASES_HTML  = 'listprojects.html'
+LIST_RELEASES_HTML   = 'listreleases.html'
+DISPLAY_CHART_HTML   = 'displaychart.html'
+DISPLAY_CHART_PKG_HTML      = 'displaychartpkg.html'
+DISPLAY_CHART_PKG_FAIL_HTML = 'displaychartpkgfail.html'
+DISPLAY_FILEDETAILS_HTML    = 'displayfiledetails.html'
+DISPLAY_FILEHISTORY_HTML    = 'displayfilehistory.html'
+LIST_FILES_HTML       = 'listfiles.html'
+RELEASE_SUMMARY_HTML  = 'releasesummary.html'
+LIST_LAYERS_HTML = 'listlayers.html'
+LIST_DIRS_HTML = 'listdirs.html'
+
+###############################################################################
+# Main list data requests
+###############################################################################
+def welcome(request):
+    '''Request for the welcome page'''
+    return render_to_response(WELCOME_HTML)
+
+def help(request):
+    '''Handle request for help'''
+    return render_to_response(HELP_HTML)
+
+def list_projects(request):
+    '''Lists all projects in the system eg FM/CM'''
+    paramWrapper = RegressionRequestWrapper()
+    paramWrapper.getProjectsList()
+    return render_to_response(LIST_CODEBASES_HTML, {'reg_params': paramWrapper})
+
+def list_branches(request, project):
+    '''Lists all branches for the selected project ie DEV/PROD'''
+    paramWrapper = RegressionRequestWrapper(project)
+    paramWrapper.getBranchList()
+    return render_to_response(LIST_CODEBASES_HTML, {'reg_params': paramWrapper})
+
+def list_releases(request, project, branch):
+    '''Lists all releases for the selected branch ie 24-0-219 etc'''
+    paramWrapper = RegressionRequestWrapper(project, branch)
+    paramWrapper.getReleaseList()
+    return render_to_response(LIST_RELEASES_HTML, {'reg_params': paramWrapper})
+
+###############################################################################
+# Chart Requests
+###############################################################################
+def display_totals_chart(request, project, branch):
+    '''Displays the release figures totals chart for the given codebase'''
+    paramWrapper = RegressionRequestWrapper(project, branch)
+    paramWrapper.getCodeBase()
+    return render_to_response(DISPLAY_CHART_HTML, {'reg_params': paramWrapper, 'chart_type': 'bar'})
+
+def display_pass_rate_chart(request, project, branch):
+    '''Displays the release pass rate chart for the given codebase'''
+    paramWrapper = RegressionRequestWrapper(project, branch)
+    paramWrapper.getCodeBase()
+    return render_to_response(DISPLAY_CHART_HTML, {'reg_params': paramWrapper, 'chart_type': 'line'})
+
+###############################################################################
+# Get detailed file information
+###############################################################################
+def display_file_details(request, project, branch, release, package, layer, directory, filename):
+    '''Displays the details for the given scenario file'''
+    paramWrapper = RegressionRequestWrapper(project, branch, release, package, layer, directory, filename)
+    paramWrapper.getCodeBase()
+    return render_to_response(DISPLAY_FILEDETAILS_HTML, {'reg_params': paramWrapper})
+
+def display_file_history(request, project, branch, release, package, layer, directory, filename):
+    '''Gets the regression pass status for the selected file over all the releases'''
+    paramWrapper = RegressionRequestWrapper(project, branch, release, package, layer, directory, filename)
+    paramWrapper.getFileHistory()
+    return render_to_response(DISPLAY_FILEHISTORY_HTML, {'reg_params': paramWrapper})
+
+def display_release_summary(request, project, branch, release):
+    '''Display the results for the selected release'''
+    paramWrapper = RegressionRequestWrapper(project, branch, release)
+    selected_release = paramWrapper.getRelease()
+
+    # Process request to display the packages chart for the release
+    if 'type' in request.REQUEST.keys() and request.REQUEST['type'] is not None:
+        if request.REQUEST['type'] == 'package':
+            return render_to_response(DISPLAY_CHART_PKG_HTML, {'reg_params': paramWrapper, 'chart_type': 'release_packages'})
+        elif request.REQUEST['type'] == 'package_fail':
+            return render_to_response(DISPLAY_CHART_PKG_FAIL_HTML, {'reg_params': paramWrapper, 'chart_type': 'release_packages_fail'})
+        else:
+            raise Http404
+
+    pkgs_list = paramWrapper.getPackagesList()
+    regQuerySet = RegressionResult.objects.filter(release__id__exact=selected_release.id)
+
+    # Check if there are any compliance warnings and display a warning on screen
+    cpFailures = regQuerySet.filter(file__package__startswith='ngcp', status='1')
+    if cpFailures and cpFailures.count() > 0:
+        paramWrapper.setComplianceWarning(True)
+
+    # Get the status figures per package
+    pkg_hash_list = process_package_stats_list(regQuerySet, pkgs_list, None, None)
+
+    # Get top level stats for the release.
+    paramWrapper.getReleaseStats()
+
+    return render_to_response(RELEASE_SUMMARY_HTML, {'reg_params': paramWrapper, \
+                                                     'pkg_hash_list' : pkg_hash_list})
+
+def display_layers(request, project, branch, release, package):
+    '''Display the results for the selected package'''
+    paramWrapper = RegressionRequestWrapper(project, branch, release, package)
+    selected_release = paramWrapper.getRelease()
+    pkgs_list = paramWrapper.getPackagesList()
+    regQuerySet = RegressionResult.objects.filter(release__id__exact=selected_release.id)
+
+    # Get the status figures per package
+    pkg_hash_list = process_package_stats_list(regQuerySet, pkgs_list, package, None)
+
+    selected_pkg_hash = None
+    if pkg_hash_list is not None:
+        for x in pkg_hash_list:
+            if x.items()[0][0] == package:
+                selected_pkg_hash = x.items()[0][1]
+    # Get top level stats for the release.
+    paramWrapper.getReleaseStats()
+
+    return render_to_response(LIST_LAYERS_HTML, {'reg_params': paramWrapper, \
+                                                     'pkg_hash_list' : pkg_hash_list, \
+                                                     'sel_pkg_hash' : selected_pkg_hash})
+
+def display_dirs(request, project, branch, release, package, layer):
+    '''Display the results for the selected layer'''
+    paramWrapper = RegressionRequestWrapper(project, branch, release, package, layer)
+    selected_release = paramWrapper.getRelease()
+    pkgs_list = paramWrapper.getPackagesList()
+    regQuerySet = RegressionResult.objects.filter(release__id__exact=selected_release.id)
+
+    # Get the status figures per package
+    pkg_hash_list = process_package_stats_list(regQuerySet, pkgs_list, package, layer)
+
+    selected_pkg_hash = None
+    if pkg_hash_list is not None:
+        for x in pkg_hash_list:
+            if x.items()[0][0] == package:
+                if x.items()[0][1]['layers'] is not None:
+
+                    layersList = x.items()[0][1]['layers']
+                    for l in layersList:
+                        if l.items()[0][0] == layer:
+                            #print l.items()[0][1]
+                            selected_pkg_hash = l.items()[0][1]
+
+    # Get top level stats for the release.
+    paramWrapper.getReleaseStats()
+
+    return render_to_response(LIST_DIRS_HTML, {'reg_params': paramWrapper, \
+                                                     'pkg_hash_list' : pkg_hash_list, \
+                                                     'sel_layer_hash' : selected_pkg_hash})
+
+def display_results(request, project, branch, release, package=None, layer=None, directory=None):
+    '''Display the results for the selected path ie for a release/package/layer'''
+    paramWrapper = RegressionRequestWrapper(project, branch, release, package, layer, directory)
+    selected_release = paramWrapper.getRelease()
+    # Process request to display the packages chart for the release
+    if 'type' in request.REQUEST.keys() and request.REQUEST['type'] is not None:
+        if request.REQUEST['type'] == 'package':
+            return render_to_response(DISPLAY_CHART_PKG_HTML, {'reg_params': paramWrapper, 'chart_type': 'release_packages'})
+        elif request.REQUEST['type'] == 'package_fail':
+            return render_to_response(DISPLAY_CHART_PKG_FAIL_HTML, {'reg_params': paramWrapper, 'chart_type': 'release_packages_fail'})
+        else:
+            raise Http404
+
+    pkgs_list = paramWrapper.getPackagesList()
+    regQuerySet = RegressionResult.objects.filter(release__id__exact=selected_release.id)
+
+    # Get the status figures per package
+    pkg_hash_list = process_package_stats_list(regQuerySet, pkgs_list, package, layer)
+
+    # get the list of files for the directory
+    files_list = RegressionResult.objects.filter(file__package__exact=package, file__layer__exact=layer, file__directory_path__exact=directory, release__id__exact=selected_release.id)
+
+    return render_to_response(LIST_FILES_HTML, {'reg_params': paramWrapper, \
+                                              'files_list' : files_list,
+                                              'pkg_hash_list' : pkg_hash_list})
+
+###############################################################################
+# Chart Data Requests - used by the chart object to get the data figures
+###############################################################################
+def chart_data_test(request, type='bar', releaseID=-1):
     # Display the failures across the packages for the given release
     chart = open_flash_chart()
     t = title(text="FM Package Failures")
@@ -152,28 +328,29 @@ def chart_data2(request, type='bar'):
 
     b1 = bar()
     b1.text="Failures"
-    
+
     # todo update for specified release
-    results = RegressionResult.objects.filter(status='1', release__id__exact=1).values('file__package').annotate(Count('file__package')).order_by('file__package')
+    results = RegressionResult.objects.filter(status='1', release__id__exact=releaseID).values('file__package').annotate(Count('file__package')).order_by('file__package')
     package_names = []
     package_failures = []
     for result_item in results:
         package_names.append(result_item['file__package'])
         package_failures.append(result_item['file__package__count'])
     b1.values = package_failures
-    
+
     chart.add_element(b1)
     chart.y_axis = y_axis(min=0, max=250, steps=10)
     chart.x_axis = x_axis(labels=labels(labels=package_names))
     return HttpResponse(chart.render())
 
-def chart_data(request, type='bar'):
+def chart_data(request, type='bar', releaseID=-1):
+    '''json data request handler for ofc chart data requests'''
     t = title(text=time.strftime('%a %Y %b %d'))
     #tt = tooltip("P #val#%")
     chart = open_flash_chart()
-    chart.title = t    
+    chart.title = t
 
-    # Generic bar chart
+    # Generic bar chart - for testing
     if type == 'bar1':
         b1 = bar()
         b1.values = range(9,0,-1)
@@ -182,7 +359,7 @@ def chart_data(request, type='bar'):
         b2.colour = '#56acde'
         chart.add_element(b1)
         chart.add_element(b2)
-        
+
     # Display the release stats for all releases - bar chart which shows three bars per release
     if type == 'bar':
         t = title(text="FM Release Figures")
@@ -190,15 +367,15 @@ def chart_data(request, type='bar'):
         release_list = Release.objects.all()
         b1 = bar()
         b1.text="total"
-        
+
         b2 = bar()
         b2.colour = '#00ee00'
         b2.text="pass"
-        
+
         b3 = bar()
         b3.colour = '#ee0000'
         b3.text="fail"
-        
+
         total_values = []
         pass_values = []
         fail_values = []
@@ -208,11 +385,11 @@ def chart_data(request, type='bar'):
             pass_values.append(rel.total_pass)
             fail_values.append(rel.total_fail)
             release_names.append(str(rel.name))
-        
+
         b1.values = total_values
         b2.values = pass_values
         b3.values = fail_values
-        
+
         chart.add_element(b1)
         chart.add_element(b2)
         chart.add_element(b3)
@@ -225,7 +402,7 @@ def chart_data(request, type='bar'):
         release_list = Release.objects.all()
         l1 = line()
         #l1.text="total"
-        
+
         release_names = []
         percentage_pass = []
         for rel in release_list:
@@ -235,19 +412,19 @@ def chart_data(request, type='bar'):
             else:
                 pass_rate = round((float(rel.total_files - rel.total_fail) / rel.total_files) * 100, 2)
             percentage_pass.append(pass_rate)
-        
+
         l1.values = percentage_pass
         #l1.values = [9,8,7,6,5.0,4,3.2,2,1]
         chart.add_element(l1)
         chart.y_axis = y_axis(min=0, max=100, steps=10)
         chart.x_axis = x_axis(labels=labels(labels=release_names))
-        
-    # Line chart showing the percentage pass rate across releases
+
+    # Line chart showing the percentage pass rate across releases - for testing
     elif type == 'line1':
         l = line()
         l.values = [9,8,7,6,5.0,4,3.2,2,1]
         chart.add_element(l)
-    # Generic pie chart
+    # Generic pie chart - for testing
     elif type == 'pie1':
         p1 = pie();
         pa = pie_value(value=1, label='a', colour='#FF0000');
@@ -258,6 +435,8 @@ def chart_data(request, type='bar'):
         chart.add_element(p1)
     # Pie chart for specific release which shows break down of file types: pass, fail, void, new etc
     elif type == 'pie':
+        t = title(text="Release Figures")
+        chart.title = t
         colour_mapping = {
             0 : '#00FF00', \
             1 : '#FF0000', \
@@ -267,12 +446,12 @@ def chart_data(request, type='bar'):
         }
         # Obtain stats for release
         # todo need to dynamically select the release
-        stats = RegressionResult.objects.filter(release__id__exact=1).values('status').annotate(Count('status')).order_by('status')
+        stats = RegressionResult.objects.filter(release__id__exact=releaseID).values('status').annotate(Count('status')).order_by('status')
         # Reformat data
         release_stats = {}
         for stat_item in stats:
             release_stats[int(stat_item['status'])] = int(stat_item['status__count'])
-        # Set data for pie chart    
+        # Set data for pie chart
         p1 = pie();
         data_array = []
         stats_class = StatusTotals()
@@ -282,6 +461,112 @@ def chart_data(request, type='bar'):
             current_pie_data = pie_value(value=release_stats[case_type], label=stats_class.getStatusStr(case_type), colour=colour_mapping[case_type])
             data_array.append(current_pie_data)
         p1.values = data_array
-        
+
         chart.add_element(p1)
+    # Bar chart to show package failures for a given release
+    elif type == 'release_packages':
+        release_stats = {}
+        stats = RegressionResult.objects.filter(release__id__exact=releaseID).values('file__package', 'file__layer', 'status').annotate(Count('status')).order_by('file__package', 'file__layer', 'status')
+        # Gather all the details into a hash of hashes
+        # The hash format is:
+        # { package.layer :
+        #                  {status : status_count}
+        # }
+        for stat in stats:
+            key = "%s.%s" % (str(stat['file__package']), str(stat['file__layer']))
+            status = int(stat['status'])
+            status_value = int(stat['status__count'])
+            TOTAL_KEY = 'total'
+            statusHash = {TOTAL_KEY: 0}
+            if key in release_stats.keys():
+                statusHash = release_stats[key]
+            else:
+                # Add new hash
+                release_stats[key] = statusHash
+            statusHash[TOTAL_KEY] += status_value
+        # Now build the chart
+        t = title(text="Release Total Package stats.")
+        chart.title = t
+
+        b2 = bar()
+        b2.colour = '#00ee00'
+        b2.text="total"
+
+        total_values = []
+        package_names = []
+        for (pkg, statuses) in release_stats.items():
+            total_values.append(statuses[TOTAL_KEY])
+            package_names.append(pkg)
+
+        b2.values = total_values
+
+        chart.add_element(b2)
+
+        chart.y_axis = y_axis(min=0, max=5000, steps=500)
+        # Custom x axis to display vertical labels
+        x = x_axis()
+        xlbls = x_axis_labels(steps=1, rotate='vertical', colour='#FF0000')
+        xlbls.labels = package_names
+        x.labels = xlbls
+        chart.x_axis = x
+
+        #chart.x_axis = x_axis(labels=labels(labels=package_names))
+    elif type == 'release_packages_fail':
+        release_stats = {}
+        stats = RegressionResult.objects.filter(release__id__exact=releaseID).values('file__package', 'file__layer', 'status').annotate(Count('status')).order_by('file__package', 'file__layer', 'status')
+        # Gather all the details into a hash of hashes
+        # The hash format is:
+        # { package.layer :
+        #                  {status : status_count}
+        # }
+        for stat in stats:
+            key = "%s.%s" % (str(stat['file__package']), str(stat['file__layer']))
+            status = int(stat['status'])
+            status_value = int(stat['status__count'])
+            statusHash = {}
+            if key in release_stats.keys():
+                statusHash = release_stats[key]
+            else:
+                # Add new hash
+                release_stats[key] = statusHash
+            statusHash[status] = status_value
+        # Now build the chart
+        t = title(text="Release Package Failure stats.")
+        chart.title = t
+
+        b3 = bar()
+        b3.colour = '#ee0000'
+        b3.text="fail"
+
+        total_values = []
+        pass_values = []
+        fail_values = []
+        package_names = []
+        for (pkg, statuses) in release_stats.items():
+            fail_count = 0
+            pass_count = 0
+            if 0 in statuses.keys():
+                pass_count = statuses[0]
+            if 1 in statuses.keys():
+                fail_count = statuses[1]
+
+            pass_values.append(pass_count)
+            fail_values.append(fail_count)
+            package_names.append(pkg)
+
+        #b2.values = pass_values
+        b3.values = fail_values
+
+        #chart.add_element(b2)
+        chart.add_element(b3)
+        chart.y_axis = y_axis(min=0, max=400, steps=20)
+        # Custom x axis to display vertical labels
+        x = x_axis()
+        xlbls = x_axis_labels(steps=1, rotate='vertical', colour='#FF0000')
+        xlbls.labels = package_names
+        x.labels = xlbls
+        chart.x_axis = x
+
+        #chart.x_axis = x_axis(labels=labels(labels=package_names))
+
     return HttpResponse(chart.render())
