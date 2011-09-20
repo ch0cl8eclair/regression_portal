@@ -1,6 +1,6 @@
 *.pyc
 *.db
-
+*.orig
 *~
 *.lock
 *.DS Store
