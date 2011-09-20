@@ -1,0 +1,10 @@
+*.pyc
+*.db
+
+*~
+*.lock
+*.DS Store
+*.swp
+*.out
+*.log
+
