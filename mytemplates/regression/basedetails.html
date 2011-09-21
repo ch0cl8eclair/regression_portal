@@ -12,6 +12,7 @@
     {% if reg_params.packages_list %}
         {% if pkg_hash_list %}
             <ul>
+            <li><P><span class="left">Package</span><span class="right">Fail</span><span class="right">Tot.</span></li>
             {% for pkghash in pkg_hash_list %}
                 <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkghash.items.0.0 }}/"><span class="left">{{ pkghash.items.0.0 }}</span><span class="right">{{ pkghash.items.0.1.fail }}</span><span class="right">{{ pkghash.items.0.1.total|default:0 }}</span></a></li>
                 {% if pkghash.items.0.1.layers %}
@@ -39,25 +40,25 @@
         {% endif %}
     {% endif %}
     {% endblock sidebar %}
-    
+
     {# Define the block content and allow pages to customize via the pagecontent tag #}
     {% block content %}
         {# Define breadcrumbs #}
         <p class="breadcrumb">
             {% if reg_params.projectStr %}
-                
+
                 {% if reg_params.branchStr %}
                     <a href="/regression/{{ reg_params.project.project }}">{{ reg_params.project.project|upper }}</a>
-                    
+
                     {% if reg_params.release %}
                         <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}">{{ reg_params.branchStr|upper }}</a>
-                        
+
                         {% if reg_params.packageStr %}
                             <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}">{{ reg_params.release.name }}</a>
-                            
+
                             {% if reg_params.layerStr %}
                                 <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}">{{ reg_params.packageStr }}</a>
-                                
+
                                 {% if reg_params.directoryStr %}
                                     <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}">{{ reg_params.layerStr }}</a>
                                     {% if reg_params.directoryStr %}
@@ -72,7 +73,7 @@
                         {% else %}
                             {{ reg_params.release.name }}
                         {% endif %} {# package #}
-                        
+
                     {% else %}
                         {{ reg_params.branchStr|upper }}
                     {% endif %} {# release #}
@@ -83,14 +84,14 @@
                 &nbsp;
             {% endif %} {# project #}
         </p>
-        
+
         {# Define heading #}
         <div id="heading">
             <h2>{% block pagename %}{% endblock pagename %}</h2>
         </div>
         <div class=spacer>
         </div>
-        
+
         {# Allow page content #}
         {% block pagecontent %}
         {% endblock pagecontent %}
