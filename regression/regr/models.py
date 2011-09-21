@@ -28,7 +28,7 @@ class Release(models.Model):
     comment = models.CharField(max_length=100, null=True)
 
     class Meta:
-        ordering = ['code_base', 'date', 'name']
+        ordering = ['code_base', '-date', 'name']
 
     def __unicode__(self):
         return "%s, %s, %s" %(self.code_base, self.name, self.date.strftime("%d %m %y"))
@@ -90,7 +90,12 @@ class RegressionResult(models.Model):
                 outTime += ("%ss" % sec)
             return outTime.strip()
         return ""
-
+        
+    def getStartTimeAsStr(self):
+        if self.start_time is not None and len(self.start_time) == 6:
+            return "%s:%s:%s" % (self.start_time[0:2], self.start_time[2:4], self.start_time[4:])
+        return ""
+            
     def __unicode__(self):
         return "%s, %s, %s" % (self.release, self.file, self.status)
 
@@ -117,6 +122,24 @@ class Responsibility(models.Model):
 
     def __unicode__(self):
         return "%s %s %s s %s %s" % (self.package, self.function, self.team, self.primary, self.secondary, self.area)
+
+class PackageSynchro(models.Model):
+    '''Holds information on a package regarding regression run'''
+    release = models.ForeignKey(Release)
+    package = models.CharField(max_length = 20)
+    layer = models.CharField(max_length = 10)
+
+    host = models.CharField(max_length = 8, null=True)
+
+    start_date = models.CharField(max_length = 8, null=True)
+    start_time = models.CharField(max_length = 6, null=True)
+    end_date = models.CharField(max_length = 8, null=True)
+    end_time = models.CharField(max_length = 6, null=True)
+
+
+
+    def __unicode__(self):
+        print "PkgSync %s %s %s" %(self.release.id, self.package, self.layer)
 
 ###############################################################################
 class StatusTotals:

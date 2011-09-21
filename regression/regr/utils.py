@@ -3,9 +3,10 @@ from django.db.models import Count
 
 class ReleaseHierarchy:
     '''Represents the top level release level of the regression hierarchy'''
-    def __init__(self, querySet):
+    def __init__(self, querySet, selectedName=None, selectedSubName=None):
         self.regQuerySet = querySet
-        self.selectedName = None
+        self.selectedName = selectedName
+        self.selectedSubName = selectedSubName
         
     def getFilterField(self):
         return 'file__package'
@@ -31,13 +32,14 @@ class ReleaseHierarchy:
                 statusHash['total'] += total_cases
         
     def handleAdditionalData(self, name, statusHash):
+        print "handleAdditionalData processing %s"%name
         if self.selectedName is not None and self.selectedName == name:
-            layerObj = LayerHierarchy(self.regQuerySet, name)
+            layerObj = LayerHierarchy(self.regQuerySet, self.selectedName)
             layerHash = layerObj.getDirList()
             
             if layerHash is not None:
                 layerList = []
-                for l in layerHash.keys():
+                for l in sorted(layerHash.keys()):
                     newHash = {}
                     newHash[l] = layerHash[l]
                     layerList.append(newHash)
@@ -93,7 +95,7 @@ class LayerHierarchy(ReleaseHierarchy):
         dirHash = dirObj.getDirList()
         if dirHash is not None:
                 dirList = []
-                for d in dirHash.keys():
+                for d in sorted(dirHash.keys()):
                     newHash = {}
                     newHash[d] = dirHash[d]
                     dirList.append(newHash)
@@ -107,14 +109,14 @@ class DirHierarchy(LayerHierarchy):
     def getFilterField(self):
         return 'file__directory_path'
     def getDataSet(self):
-        return self.regQuerySet.filter(file__package__exact=self.package, file__layer__exact=self.layer).values(self.getFilterField(), 'status').annotate(Count('status')).order_by(self.getFilterField(), 'status')
+        return self.regQuerySet.filter(file__package__exact=self.package, file__layer__exact=self.layer).values(self.getFilterField(), 'status').order_by(self.getFilterField(), 'status').annotate(Count('status'))
     def handleAdditionalData(self, name, statusHash):
         return None
 
 def process_package_stats(statsQuerySet, package=None, layer=None):
     '''Generates a hash which contains all the package information for a release'''
-    release = ReleaseHierarchy(statsQuerySet)
-    release.setSelectedName(package)
+    release = ReleaseHierarchy(statsQuerySet, package, layer)
+    #release.setSelectedName(package)
     resultsHash = release.getDirList()
     return resultsHash
     
@@ -134,7 +136,7 @@ def printPackageHash(packageHash):
     if packageHash:
         for p,v in packageHash.items():
             print "Package: %s f: %d, t: %d" % (p, v['fail'], v['total'])
-            if 'layers' in v.keys():
+            if 'layers' in sorted(v.keys()):
                 for l in v['layers']:
                     print "  Layer: %s f: %d, t: %d" % (l.items()[0][0], l.items()[0][1]['fail'], l.items()[0][1]['total'])
                     if 'dirs' in l.items()[0][1]:

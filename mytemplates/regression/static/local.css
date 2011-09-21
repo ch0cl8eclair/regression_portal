@@ -179,6 +179,10 @@ table.scenarios th {
     font-weight: bolder;
   -moz-border-radius: ;
 }
+
+table.scenarios th.sstart {
+text-align: center;
+}
 table.scenarios td {
   border-width: 2px;
   padding: 2px;
@@ -194,10 +198,17 @@ table.scenarios td.sstatus {
     width: 10%;
 }
 
+table.scenarios td.fail {
+    color: red;
+    font-weight: bolder;
+}
+
 table.scenarios td.sduration {
     width: 15%;
 }
-
+table.scenarios td.sstarttime {
+    width: 10%;
+}
 table.list_parent {
 border-width: 4px;
   border-spacing: 4px;

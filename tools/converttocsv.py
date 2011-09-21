@@ -224,8 +224,8 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
     def __getSqlRegressionResultImportFile__(self):
         return "imp_%s_reg_result.sql" % self.sourceDataFile.getPackage()
 
-    def addNewRegressionResultRecord(self, releaseId, fileId, status, duration):
-        recordLine = "null, %s, %s, %s, 0, null, null, null, null, %s, null" % (releaseId, fileId, str(status), duration)
+    def addNewRegressionResultRecord(self, releaseId, fileId, status, duration, startTime):
+        recordLine = "null, %s, %s, %s, 0, null, null, null, null, %s, %s" % (releaseId, fileId, str(status), duration, startTime)
         self.newRegressionResultRecords.append(recordLine)
 
     def saveRegressionResultRecords(self):
@@ -263,6 +263,10 @@ def convertDurationStr(durationStr):
   h, m = divmod(m, 60)
   return "'%d,%d,%.1f'" % (h, m, s)
 
+def convertTimeStr(timeStr):
+    '''Converts a time str of the format: hh:mm:ss to hhmmss'''
+    return timeStr.replace(':','')
+    
 ###
 # Main method
 #
@@ -358,8 +362,8 @@ def main():
         cf = open(currentFile)
         newRecordLines = []
         for cfLine in cf:
-            # RetrieveDistributionForRamp/DistributionRequestForRamp.Case_001.scn,OK,\n
-            (cfFileName, cfStatus, cfDurationStr) = cfLine.split(',')[:3]
+            # RetrieveDistributionForRamp/DistributionRequestForRamp.Case_001.scn,OK,7.1,01:23:55\n
+            (cfFileName, cfStatus, cfDurationStr, cfStartTimeStr) = cfLine.split(',')[:4]
             justDirName = os.path.dirname(cfFileName)
             justFileName = os.path.basename(cfFileName)
             # Update totals
@@ -368,7 +372,7 @@ def main():
             recordId = dbTableCache.getRecordId(sourceDataFile.getLayer(), justDirName, justFileName)
             if recordId != -1:
                 # generate regression result
-                dbutil.addNewRegressionResultRecord(release_id, recordId, str(statusTotals.getNumericValue(cfStatus)), convertDurationStr(cfDurationStr))
+                dbutil.addNewRegressionResultRecord(release_id, recordId, str(statusTotals.getNumericValue(cfStatus)), convertDurationStr(cfDurationStr), convertTimeStr(cfStartTimeStr))
             else:
                 # need to store this record for later processing
                 dbutil.addNewRegressionFileRecord(justDirName, justFileName)
@@ -383,7 +387,7 @@ def main():
         dbTableCache = dbutil.readInDatabaseTableCache(False)
         # reprocess the regression files
         for newLine in newRecordLines:
-            (cfFileName, cfStatus, cfDurationStr) = newLine.split(",")[:3]
+            (cfFileName, cfStatus, cfDurationStr, cfStartTimeStr) = newLine.split(",")[:4]
             justDirName = os.path.dirname(cfFileName)
             justFileName = os.path.basename(cfFileName)
 
@@ -391,7 +395,7 @@ def main():
             if recordId == -1:
                 print >> sys.stderr, "Damn, something wrong here, the saved file has a negative id - file: %s %s %s" % (sourceDataFile.getPackage(), sourceDataFile.getLayer(), cfFileName)
                 continue
-            dbutil.addNewRegressionResultRecord(release_id, recordId, str(statusTotals.getNumericValue(cfStatus)), convertDurationStr(cfDurationStr))
+            dbutil.addNewRegressionResultRecord(release_id, recordId, str(statusTotals.getNumericValue(cfStatus)), convertDurationStr(cfDurationStr), convertTimeStr(cfStartTimeStr))
 
         # Now save all the regression results.
         dbutil.saveRegressionResultRecords()

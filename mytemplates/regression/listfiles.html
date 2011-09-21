@@ -21,13 +21,19 @@
         <table class="scenarios" id="scenarios_table">
             <thead>
             <tr>
-            <th>Scenario</th><th>Status</th><th>Duration</th>
+            <th>Scenario</th><th>Status</th><th>Duration</th><th class=sstart>Start time</th>
             </tr>
             </thead>
             <tbody>
             {% for file in files_list %}
                 <tr>
-                    <td class=sname><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}/{{ reg_params.directoryStr }}/{{ file.file.file_name }}" target="_blank">{{ file.file.file_name }}</a></td><td class=sstatus>{{file.getStatusAsStr}}</td><td class=sduration>{{file.getDurationAsStr}}</td>
+                    <td class=sname><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}/{{ reg_params.directoryStr }}/{{ file.file.file_name }}" target="_blank">{{ file.file.file_name }}</a></td>
+                    {% if file.getStatusAsStr == "Failed" %}
+                        <td class="sstatus fail">{{file.getStatusAsStr}}</td>
+                    {% else %}
+                        <td class="sstatus">{{file.getStatusAsStr}}</td>
+                    {% endif %}
+                    <td class=sduration>{{file.getDurationAsStr}}<td class=sstarttime>{{file.getStartTimeAsStr}}</td>
                 <tr/>
             {% endfor %}
             </tbody>

@@ -24,7 +24,7 @@ function toggleScenariosDisplay() {
                 tdElements = myRows[r].childNodes;
                 for (tdc = 0; tdc < tdElements.length; tdc++) {
                         if (tdElements[tdc].nodeType == 1 && tdElements[tdc].nodeName == "TD" && 
-                            tdElements[tdc].className == "sstatus" && tdElements[tdc].firstChild.nodeValue.indexOf("Failed") == -1) {
+                            tdElements[tdc].className.indexOf("sstatus") != -1 && tdElements[tdc].firstChild.nodeValue.indexOf("Failed") == -1) {
                                 if (myRows[r].style.display != 'none')
                                      myRows[r].style.display = 'none';
                               else {

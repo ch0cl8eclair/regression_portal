@@ -7,12 +7,13 @@ ADMINS = (
     # ('bklair', 'baldevklair@yahoo.co.uk'),
 )
 
+TOP_DIR= 'C:/dev/webproj'
 MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'C:/dev/webproj/regression/regression.db',                      # Or path to database file if using sqlite3.
+        'NAME': '%s/regression/regression.db' % TOP_DIR,                      # Or path to database file if using sqlite3.
         'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
@@ -78,13 +79,13 @@ MIDDLEWARE_CLASSES = (
 ROOT_URLCONF = 'regression.urls'
 
 TEMPLATE_DIRS = (
-    "C:/dev/webproj/mytemplates/regression"
+    "%s/mytemplates/regression" % TOP_DIR
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
 )
 
-STATIC_DOC_ROOT = 'C:/dev/webproj/mytemplates/regression/static'
+STATIC_DOC_ROOT = '%s/mytemplates/regression/static' % TOP_DIR
 
 INSTALLED_APPS = (
     'django.contrib.auth',

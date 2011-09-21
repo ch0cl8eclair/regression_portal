@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404, get_list_or_404, render_to_response
+from django.shortcuts import get_object_or_404, get_list_or_404, render_to_response, redirect
 from django.http import HttpResponseRedirect, HttpResponse, Http404
 from regr.models import *
 from regr.utils import process_package_stats_list
@@ -46,7 +46,7 @@ class RegressionRequestWrapper:
         '''Gets the list of release for the select project'''
         self.getCodeBase()
         ## TODO again check for null and return 404
-        self.release_list = self.project.release_set.values()
+        self.release_list = self.project.release_set.values()[:5]
         return self.release_list
 
     def getRelease(self):
@@ -73,7 +73,52 @@ class RegressionRequestWrapper:
             self.historical_status_list.append(new_hash)
 
         return self.historical_status_list
+        
+    def generateServerLogsUrl(self, branch, release, package, packageSync):
+        urlStr = "http://%s/logviewer/cgi-bin/getfelog.cgi?\
+app=fml&\
+phase=UT&\
+filter=edi&\
+getreply=off&\
+showDuplicateConvIDs=off&\
+mode=AND&\
+expression1=&\
+expression2=&\
+expression3=&\
+expression4=&\
+expression5=&\
+expression6=&\
+mode2=AND&\
+expression2_1=&\
+expression2_2=&\
+expression2_3=&\
+expression2_4=&\
+expression2_5=&\
+expression2_6=&\
+begindate=%s&\
+begintime=%s&\
+enddate=%s&\
+endtime=%s&\
+machine=UT%s&\
+obeapp_dir=/vtmp/ngdfmbld/%s/%s/internal/%s/edi&\
+file=feFML_otf*\
+" % (packageSync.host, packageSync.start_date, packageSync.start_time, packageSync.end_date, packageSync.end_time, packageSync.host, branch, release, package)
+        return urlStr
 
+    def getServerLogsUrl(self):
+        '''Generates the server logs url'''
+        self.getCodeBase()
+        self.getRelease()
+        
+        packageList = PackageSynchro.objects.filter(release__exact=self.release.id, package__exact=self.packageStr, layer__exact=self.layerStr);
+        if packageList is None or len(packageList) == 0:
+            url =  "/doesnotexist.html"
+        else:
+            url = generateServerLogsUrl(self.branchStr, self.releaseStr, self.packageStr, packageList[0])
+        print ">>>>" + url
+        return url
+
+        
     def getPackagesList(self):
         '''Gets a list of the packages for the current release'''
         selected_release = self.getRelease()
@@ -132,6 +177,8 @@ class RegressionRequestWrapper:
     def setComplianceWarning(self, complianceFailureExist):
         '''Sets the compliance failure warnings exist'''
         self.compliance_warning = complianceFailureExist
+        
+    
 
 ###############################################################################
 # Define main html template files
@@ -201,7 +248,8 @@ def display_file_details(request, project, branch, release, package, layer, dire
     '''Displays the details for the given scenario file'''
     paramWrapper = RegressionRequestWrapper(project, branch, release, package, layer, directory, filename)
     paramWrapper.getCodeBase()
-    return render_to_response(DISPLAY_FILEDETAILS_HTML, {'reg_params': paramWrapper})
+    serverLogsUrl = paramWrapper.getServerLogsUrl()
+    return render_to_response(DISPLAY_FILEDETAILS_HTML, {'reg_params': paramWrapper, 'serverLogsUrl' : serverLogsUrl})
 
 def display_file_history(request, project, branch, release, package, layer, directory, filename):
     '''Gets the regression pass status for the selected file over all the releases'''
@@ -317,6 +365,13 @@ def display_results(request, project, branch, release, package=None, layer=None,
                                               'files_list' : files_list,
                                               'pkg_hash_list' : pkg_hash_list})
 
+def display_latest(request, project, branch):
+    '''Redirects the user to the latest release for the given branch and project'''
+    paramWrapper = RegressionRequestWrapper(project, branch)
+    latest_release = paramWrapper.getCodeBase().release_set.all()[0]
+    
+    return redirect('regr.views.display_release_summary', project=str(project), branch=str(branch), release=str(latest_release.name))
+    
 ###############################################################################
 # Chart Data Requests - used by the chart object to get the data figures
 ###############################################################################
