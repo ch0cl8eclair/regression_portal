@@ -25,13 +25,13 @@ class Release(models.Model):
     total_other = models.PositiveIntegerField()
 
     promoted = models.BooleanField()
-    comment = models.CharField(max_length=100, null=True)
+    comment = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:
         ordering = ['code_base', '-date', 'name']
 
     def __unicode__(self):
-        return "%s, %s, %s" %(self.code_base, self.name, self.date.strftime("%d %m %y"))
+        return "%s, %s, %s, %s" %(self.id, self.code_base, self.name, self.date.strftime("%d %m %y"))
 
     def initialise_counters(self):
         self.total_files = 0
@@ -90,26 +90,33 @@ class RegressionResult(models.Model):
                 outTime += ("%ss" % sec)
             return outTime.strip()
         return ""
-        
+
     def getStartTimeAsStr(self):
         if self.start_time is not None and len(self.start_time) == 6:
             return "%s:%s:%s" % (self.start_time[0:2], self.start_time[2:4], self.start_time[4:])
         return ""
-            
+
     def __unicode__(self):
         return "%s, %s, %s" % (self.release, self.file, self.status)
 
 class Developer(models.Model):
     '''Defines a developer'''
     username  = models.CharField(max_length=15, primary_key=True)
-    username2 = models.CharField(max_length=15, null=True)
+    username2 = models.CharField(max_length=15, null=True, blank=True)
     firstname = models.CharField(max_length=15)
     surname   = models.CharField(max_length=15)
     team      = models.CharField(max_length=4)
     email     = models.CharField(max_length=30)
 
+    def populateBasicDetails(self, username, team):
+        self.username = username
+        self.firstname = username[0].lower()
+        self.surname = username[1:].lower()
+        self.team = team
+        self.email = "%s@amadeus.com" %username
+
     def __unicode__(self):
-        print "%s %s" %(self.username, self.team)
+        return "%s %s %s %s %s" %(self.username, self.team, self.firstname, self.surname, self.email)
 
 class Responsibility(models.Model):
     '''Identifies which developers are responsible for which area'''
@@ -118,10 +125,10 @@ class Responsibility(models.Model):
     team      = models.CharField(max_length=4)
     primary   = models.ForeignKey(Developer, related_name='primary_developer_set')
     secondary = models.ForeignKey(Developer, related_name='secondary_developer_set')
-    area      = models.CharField(max_length=30, null=True)
+    area      = models.CharField(max_length=30, null=True, blank=True)
 
     def __unicode__(self):
-        return "%s %s %s s %s %s" % (self.package, self.function, self.team, self.primary, self.secondary, self.area)
+        return "%s %s %s %s %s %s" % (self.package, self.function, self.team, self.primary, self.secondary, self.area)
 
 class PackageSynchro(models.Model):
     '''Holds information on a package regarding regression run'''
@@ -129,17 +136,16 @@ class PackageSynchro(models.Model):
     package = models.CharField(max_length = 20)
     layer = models.CharField(max_length = 10)
 
-    host = models.CharField(max_length = 8, null=True)
+    host = models.CharField(max_length = 8, null=True, blank=True)
 
-    start_date = models.CharField(max_length = 8, null=True)
-    start_time = models.CharField(max_length = 6, null=True)
-    end_date = models.CharField(max_length = 8, null=True)
-    end_time = models.CharField(max_length = 6, null=True)
-
+    start_date = models.CharField(max_length = 8, null=True, blank=True)
+    start_time = models.CharField(max_length = 6, null=True, blank=True)
+    end_date = models.CharField(max_length = 8, null=True, blank=True)
+    end_time = models.CharField(max_length = 6, null=True, blank=True)
 
 
     def __unicode__(self):
-        print "PkgSync %s %s %s" %(self.release.id, self.package, self.layer)
+        return "PkgSync %s %s %s %s [%s %s] [%s %s]" %(self.release.id, self.package, self.layer, self.host, self.start_date, self.start_time, self.end_date, self.end_time)
 
 ###############################################################################
 class StatusTotals:

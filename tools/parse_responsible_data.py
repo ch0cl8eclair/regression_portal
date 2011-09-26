@@ -1,3 +1,10 @@
+#!/data/softs/bin/python
+# @name parse_responsible_data.py
+# @usage parse_responsible_data.py [-r -t]
+# @description Prints out the responsible data from the latest DEV release
+# @author bklair
+# @date 30/06/11
+
 import os.path
 from os import sep
 import sys
@@ -79,7 +86,7 @@ def main():
 
     if PRINT_TEAMS:	
         for key in teamsHash.keys():
-            print "%s, %s" % (key, ", ".join(teamsHash[key]))
+            print "%s, %s" % (key, ", ".join(sorted(teamsHash[key])))
     if DEBUG:
         print "Done."
 
@@ -89,20 +96,27 @@ def usage():
 def processCmdLineOpts():
     '''Process the command line parameters'''
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "rt", ["responsible", "teams"])
+        opts, args = getopt.getopt(sys.argv[1:], "hrt", ["help", "responsible", "teams"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage()
         sys.exit(1)
     for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit(0)
         if o == "-t":
             global PRINT_TEAMS
             PRINT_TEAMS = 1
         if o == "-r":
             global PRINT_RESPONSIBLE
             PRINT_RESPONSIBLE = 1
-
+    
+    if PRINT_TEAMS == 0 and PRINT_RESPONSIBLE == 0:
+        usage()
+        sys.exit(1)
+        
 if __name__ == "__main__":
     processCmdLineOpts()
     main()

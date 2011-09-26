@@ -8,6 +8,8 @@ from django.db.models import Count
 from pyofc2  import *
 import random
 import time
+from datetime import datetime, timedelta
+import urllib
 
 class RegressionRequestWrapper:
     '''This class wraps the http url parameters and aids with the retrieval of the appropriate model objects'''
@@ -73,13 +75,50 @@ class RegressionRequestWrapper:
             self.historical_status_list.append(new_hash)
 
         return self.historical_status_list
-        
-    def generateServerLogsUrl(self, branch, release, package, packageSync):
+
+    def getCVSHistoryUrl(self):
+      '''Creates the URL str for the cvs change viewer'''
+      # The forward slashed need to be translated for the url, so do this first
+      dirQuoted = urllib.quote("%s/%s/%s" % (self.packageStr, self.layerStr, self.directoryStr) , '')
+
+      urlStr= "http://ncecvsgco/viewvc/bin/cgi/viewvc.cgi/asl_ngd/%s/?view=query&\
+pathrev=%s&\
+branch=%s&\
+branch_match=exact&\
+dir=%s&\
+file=%s&\
+file_match=exact&\
+who=&\
+who_match=exact&\
+querysort=date&\
+hours=2&\
+date=all&\
+mindate=&\
+maxdate=&\
+limit_changes=100" % (self.projectStr, self.branchStr, self.branchStr, dirQuoted, self.filenameStr)
+
+      return urlStr
+
+    def generateServerLogsUrl(self, branch, release, package, host, scenarioStartDateObj, scenarioEndDateObj):
+        '''Creates the URL str for the log viewer server logs retrieve'''
+        scenarioStartDate = ""
+        scenarioStartTime = ""
+        scenarioEndDate = ""
+        scenarioEndTime = ""
+
+        if scenarioStartDateObj is not None:
+          scenarioStartDate = scenarioStartDateObj.strftime("%Y%m%d")
+          scenarioStartTime = scenarioStartDateObj.strftime("%H%M%S")
+
+        if scenarioEndDateObj is not None:
+          scenarioEndDate = scenarioEndDateObj.strftime("%Y%m%d")
+          scenarioEndTime = scenarioEndDateObj.strftime("%H%M%S")
+
         urlStr = "http://%s/logviewer/cgi-bin/getfelog.cgi?\
 app=fml&\
 phase=UT&\
 filter=edi&\
-getreply=off&\
+getreply=on&\
 showDuplicateConvIDs=off&\
 mode=AND&\
 expression1=&\
@@ -102,23 +141,67 @@ endtime=%s&\
 machine=UT%s&\
 obeapp_dir=/vtmp/ngdfmbld/%s/%s/internal/%s/edi&\
 file=feFML_otf*\
-" % (packageSync.host, packageSync.start_date, packageSync.start_time, packageSync.end_date, packageSync.end_time, packageSync.host, branch, release, package)
+" % (host, scenarioStartDate, scenarioStartTime, scenarioEndDate, scenarioEndTime, host, branch, release, package)
         return urlStr
 
     def getServerLogsUrl(self):
         '''Generates the server logs url'''
         self.getCodeBase()
         self.getRelease()
-        
-        packageList = PackageSynchro.objects.filter(release__exact=self.release.id, package__exact=self.packageStr, layer__exact=self.layerStr);
-        if packageList is None or len(packageList) == 0:
-            url =  "/doesnotexist.html"
+        BAD_URL = "/doesnotexist.html"
+
+        # Retrieve the regression result object - there should just be the one file
+        file_list = RegressionResult.objects.filter(release__code_base__id__exact=self.project.id,
+                                                                         file__package__exact=self.packageStr,
+                                                                         file__layer__exact=self.layerStr,
+                                                                         file__directory_path__exact=self.directoryStr,
+                                                                         file__file_name__exact=self.filenameStr)
+        file_start_time = None
+        if file_list is not None and len(file_list) > 0:
+          file_start_time = file_list[0].start_time
+          file_duration = file_list[0].duration
         else:
-            url = generateServerLogsUrl(self.branchStr, self.releaseStr, self.packageStr, packageList[0])
-        print ">>>>" + url
+          return BAD_URL
+
+        # Now retrieve the pacakge synchro info ie the host on which the package was run
+        packageList = PackageSynchro.objects.filter(release__exact=self.release.id, package__exact=self.packageStr, layer__exact=self.layerStr);
+        if packageList is None or len(packageList) == 0 or packageList[0] is None:
+            return BAD_URL
+        pkgSync = packageList[0]
+
+        # check if we have a start date and a host
+        if pkgSync.start_date is None or file_start_time is None or pkgSync.host is None:
+          return BAD_URL
+
+        # Since the regression ran across midnight, we must identify the scenarion start time with the correct day.
+        # So we place the scenario start time within the package run window to id the date, however we may not have all the value for this
+        # So it is possible to generate the wrong value, but the chances of this happening should be slim ;-)
+
+        # generate the package start date obj
+        # if the package start time is missing then we can use the time from the release.
+        pkg_start_time = pkgSync.start_time
+        if pkg_start_time is None:
+          pkg_start_time = self.release.date.strftime("%H%M%S")
+        pkg_start_obj = datetime.strptime("%s %s"%(pkgSync.start_date, pkg_start_time.rjust(6, '0')), '%Y%m%d %H%M%S')
+
+        # generate the scenario start date obj
+        scenario_start_date_obj = datetime.strptime("%s %s"%(pkgSync.start_date, file_start_time.rjust(6, '0')), '%Y%m%d %H%M%S')
+
+        # Check if the scenario fall on the next day and adjust
+        if scenario_start_date_obj < pkg_start_obj:
+          scenario_start_date_obj = scenario_start_date_obj +  timedelta(days=1)
+
+        # generate the scenario end date
+        scenario_end_date_obj = None
+        if file_duration is not None:
+          (hour, min, sec) = file_duration.split(",")
+          scenario_end_date_obj = scenario_start_date_obj + timedelta(hours=int(hour), minutes=int(min), seconds=float(sec))
+
+        url = self.generateServerLogsUrl(self.branchStr, self.releaseStr, self.packageStr, pkgSync.host, scenario_start_date_obj, scenario_end_date_obj)
+
         return url
 
-        
+
     def getPackagesList(self):
         '''Gets a list of the packages for the current release'''
         selected_release = self.getRelease()
@@ -177,8 +260,8 @@ file=feFML_otf*\
     def setComplianceWarning(self, complianceFailureExist):
         '''Sets the compliance failure warnings exist'''
         self.compliance_warning = complianceFailureExist
-        
-    
+
+
 
 ###############################################################################
 # Define main html template files
@@ -249,7 +332,8 @@ def display_file_details(request, project, branch, release, package, layer, dire
     paramWrapper = RegressionRequestWrapper(project, branch, release, package, layer, directory, filename)
     paramWrapper.getCodeBase()
     serverLogsUrl = paramWrapper.getServerLogsUrl()
-    return render_to_response(DISPLAY_FILEDETAILS_HTML, {'reg_params': paramWrapper, 'serverLogsUrl' : serverLogsUrl})
+    cvsUrl = paramWrapper.getCVSHistoryUrl()
+    return render_to_response(DISPLAY_FILEDETAILS_HTML, {'reg_params': paramWrapper, 'serverLogsUrl' : serverLogsUrl, 'cvsUrl' : cvsUrl })
 
 def display_file_history(request, project, branch, release, package, layer, directory, filename):
     '''Gets the regression pass status for the selected file over all the releases'''
@@ -369,9 +453,9 @@ def display_latest(request, project, branch):
     '''Redirects the user to the latest release for the given branch and project'''
     paramWrapper = RegressionRequestWrapper(project, branch)
     latest_release = paramWrapper.getCodeBase().release_set.all()[0]
-    
+
     return redirect('regr.views.display_release_summary', project=str(project), branch=str(branch), release=str(latest_release.name))
-    
+
 ###############################################################################
 # Chart Data Requests - used by the chart object to get the data figures
 ###############################################################################
@@ -419,7 +503,7 @@ def chart_data(request, type='bar', releaseID=-1):
     if type == 'bar':
         t = title(text="FM Release Figures")
         chart.title = t
-        release_list = Release.objects.all()
+        release_list = Release.objects.all().order_by('date')
         b1 = bar()
         b1.text="total"
 
@@ -449,12 +533,20 @@ def chart_data(request, type='bar', releaseID=-1):
         chart.add_element(b2)
         chart.add_element(b3)
         chart.y_axis = y_axis(min=0, max=20000, steps=1000)
-        chart.x_axis = x_axis(labels=labels(labels=release_names))
+        #chart.x_axis = x_axis(labels=labels(labels=release_names))
+
+        # Custom x axis to display vertical labels
+        x = x_axis()
+        xlbls = x_axis_labels(steps=1, rotate='vertical', colour='#FF0000')
+        xlbls.labels = release_names
+        x.labels = xlbls
+        chart.x_axis = x
+
     # Generic line chart
     elif type == 'line':
         t = title(text="FM Pass Rate")
         chart.title = t
-        release_list = Release.objects.all()
+        release_list = Release.objects.all().order_by('date')
         l1 = line()
         #l1.text="total"
 
@@ -472,7 +564,14 @@ def chart_data(request, type='bar', releaseID=-1):
         #l1.values = [9,8,7,6,5.0,4,3.2,2,1]
         chart.add_element(l1)
         chart.y_axis = y_axis(min=0, max=100, steps=10)
-        chart.x_axis = x_axis(labels=labels(labels=release_names))
+        #chart.x_axis = x_axis(labels=labels(labels=release_names))
+
+        # Custom x axis to display vertical labels
+        x = x_axis()
+        xlbls = x_axis_labels(steps=1, rotate='vertical', colour='#FF0000')
+        xlbls.labels = release_names
+        x.labels = xlbls
+        chart.x_axis = x
 
     # Line chart showing the percentage pass rate across releases - for testing
     elif type == 'line1':

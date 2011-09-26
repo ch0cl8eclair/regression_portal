@@ -22,6 +22,7 @@ class SourceDataFile:
     '''Encapsulates a regression data file, its name is composed of various parts.'''
     def __init__(self, filename):
         (self.project, self.package, self.layer, self.branch) = filename.split('.')[:4]
+        self.filename = filename
     def getProject(self):
         return self.project
     def getPackage(self):
@@ -80,11 +81,10 @@ class DatabaseTableCache:
 ###############################################################################
 class DatabaseUtil:
     '''Utility functions to interact with the database.'''
-    def __init__(self, sourceDataFile, sourceBaseId):
+    def __init__(self, fileDir, sourceDataFile, sourceBaseId):
+        self.fileDir = fileDir
         self.sourceDataFile = sourceDataFile
         self.sourceBaseId = sourceBaseId
-        self.newRegressionFileRecords = []
-        self.newRegressionResultRecords = []
 
     def __getSqlCommandFile__(self):
         '''Gets the name of the sql command file which is used to hold the export data commands'''
@@ -145,34 +145,22 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
         importFile.write("\n".join(records))
         importFile.close()
 
-    def __writeRecordsToFileAsSql__(self, filename, tablename, records):
+    def __writeRecordsToFileAsSql__(self, filename, tablename, records, deleteExistingRecords=False):
         '''Writes the given records for the given table to the given file'''
         importFile = open(filename, 'w')
         importFile.write("BEGIN TRANSACTION;\n")
+        if deleteExistingRecords:
+            importFile.write("DELETE FROM %s;\n" % tablename)
         for record in records:
             recStr = "INSERT INTO %s VALUES( %s );\n" % (tablename, record)
             importFile.write(recStr)
         importFile.write("END;\n")
         importFile.close()
 
-    def __saveRecordsCsv__(self, importFileName, fileRecords, databaseTable):
-        '''Imports the given records into the database by way of an intermediate csv file'''
-        # Generate the import csv file
-        self.__writeRecordsToFile__(importFileName, fileRecords)
-        # Now import the file into the Db
-        importCommand = '\".import %s %s\"' % (importFileName, databaseTable)
-        if settings.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
-            sqllitefilename=settings.DATABASES["default"]["NAME"]
-        p1 = Popen(["sqlite3", sqllitefilename, importCommand], stdout=PIPE)
-        output = p1.communicate()[1]
-        if output is not None:
-            return False
-        return True
-
-    def __saveRecordsSql__(self, importFile, databaseTable, databaseRecords):
+    def __saveRecordsSql__(self, importFile, databaseTable, databaseRecords, deleteExistingRecords=False):
         '''Imports the given records into the database by way of an intermediate sql script file'''
         # Generate the import sql file
-        self.__writeRecordsToFileAsSql__(importFile, databaseTable, databaseRecords)
+        self.__writeRecordsToFileAsSql__(importFile, databaseTable, databaseRecords, deleteExistingRecords)
         # Now import the file into the Db
         if settings.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
             sqllitefilename=settings.DATABASES["default"]["NAME"]
@@ -184,70 +172,218 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
             return True
         return False
 
-    ###
-    # Regression File methods
-    #
-    def __getCsvRegressionFileImportFile__(self):
-        return "imp_%s_reg_file.csv" % self.sourceDataFile.getPackage()
-
-    def __getSqlRegressionFileImportFile__(self):
-        return "imp_%s_reg_file.sql" % self.sourceDataFile.getPackage()
-
-    def addNewRegressionFileRecord(self, directory, filename):
-        recordLine = "null, %s, '%s', '%s', '%s', '%s'" % (self.sourceBaseId, self.sourceDataFile.getPackage(), self.sourceDataFile.getLayer(), directory, filename)
-        self.newRegressionFileRecords.append(recordLine)
-
-    def saveRegressionFileRecords(self):
-        return self.__saveRegressionFileRecordsSql__()
-
-    def __saveRegressionFileRecordsCsv__(self):
-        result = self.__saveRecordsCsv__(self.__getCsvRegressionFileImportFile__(), self.newRegressionFileRecords, "regr_regressionfile")
-        if not result:
-            print >> sys.stderr, "Error saving regression file records."
-            return False
-        return True
-
-    def __saveRegressionFileRecordsSql__(self):
+    def __loadGenericData__(self, dbFileLoaderObj):
+        dbFileLoaderObj.processData()
         # Generate the import sql file
-        result = self.__saveRecordsSql__(self.__getSqlRegressionFileImportFile__(), "regr_regressionfile", self.newRegressionFileRecords)
+        result = self.__saveRecordsSql__(dbFileLoaderObj.sqlFileName, dbFileLoaderObj.tableName, dbFileLoaderObj.getDbRecords(), dbFileLoaderObj.deleteExistingRecords)
         if not result:
-            print >> sys.stderr, "Error saving regression file records."
+            print >> sys.stderr, "Error saving %s file records." % (dbFileLoaderObj.getMsgStr())
             return False
         return True
 
     ###
-    # Regression Result methods
+    # Package Synchro records
     #
-    def __getCsvRegressionResultImportFile__(self):
-        return "imp_%s_reg_result.csv" % self.sourceDataFile.getPackage()
+    def loadPackageSyncData(self, release_id):
+        pkgsync = PackageSyncParser(self.fileDir, release_id)
+        return self.__loadGenericData__(pkgsync)
 
-    def __getSqlRegressionResultImportFile__(self):
-        return "imp_%s_reg_result.sql" % self.sourceDataFile.getPackage()
+    ###
+    # Responsible and developer records
+    #
+    def loadResponsibleData(self):
+        reponsibleMgr = ResponsibleParser(self.fileDir)
+        return self.__loadGenericData__(reponsibleMgr)
 
-    def addNewRegressionResultRecord(self, releaseId, fileId, status, duration, startTime):
-        recordLine = "null, %s, %s, %s, 0, null, null, null, null, %s, %s" % (releaseId, fileId, str(status), duration, startTime)
-        self.newRegressionResultRecords.append(recordLine)
+    ###
+    # Regression result records
+    #
+    def loadRegressionResultData(self, regressionResultMgr):
+        return self.__loadGenericData__(regressionResultMgr)
 
-    def saveRegressionResultRecords(self):
-        return self.__saveRegressionResultRecordsSql__()
-
-    def __saveRegressionResultRecordsCsv__(self):
-        result = self.__saveRecordsCsv__(self.__getCsvRegressionResultImportFile__(), self.newRegressionResultRecords, "regr_regressionresult")
-        if not result:
-            print >> sys.stderr, "Error saving regression result records."
-            return False
-        return True
-
-    def __saveRegressionResultRecordsSql__(self):
-        # Generate the import sql file
-        result = self.__saveRecordsSql__(self.__getSqlRegressionResultImportFile__(), "regr_regressionresult", self.newRegressionResultRecords)
-        if not result:
-            print >> sys.stderr, "Error saving regression file records."
-            return False
-        return True
+    ###
+    # Regression file records
+    #
+    def loadRegressionFileData(self, regressionFileMgr):
+        return self.__loadGenericData__(regressionFileMgr)
 
 ###############################################################################
 
+class DbFileLoader:
+    def __init__(self, parentDir, dataFileName, sqlFileName, tableName):
+        self.dataFileName = os.sep.join([parentDir, dataFileName])
+        self.sqlFileName = sqlFileName
+        self.tableName = tableName
+        self.db_records = None
+        self.deleteExistingRecords = False
+        self.db_records = []
+
+    def processData(self, recordLines=None):
+        if recordLines is not None:
+            return self.__processData2__(recordLines)
+
+        cf = open(self.dataFileName)
+        for cfLine in cf:
+            outputDataLine = self.generateDataRecord(cfLine.rstrip())
+            if outputDataLine is not None:
+                self.db_records.append(outputDataLine)
+        cf.close()
+
+    def __processData2__(self, recordLines):
+        '''Appends data from the given list to the main list'''
+        for recLine in recordLines:
+            if isinstance(recLine, str):
+                outputDataLine = self.generateDataRecord(recLine.rstrip())
+            else:
+                outputDataLine = self.generateDataRecord(recLine)
+            if outputDataLine is not None:
+                self.db_records.append(outputDataLine)
+
+    def generateDataRecord(self, dataLine):
+        return None
+
+    def getDbRecords(self):
+        return self.db_records;
+
+    def getMsgStr():
+        return "data records"
+
+class PackageSyncParser(DbFileLoader):
+    '''Holds functionality for parsing the package-synchro data and updating the Db'''
+
+    def __init__(self, fileDir, release_id):
+        DbFileLoader.__init__(self, fileDir, "package_synchro.txt", "synchro.sql", "regr_packagesynchro")
+        self.release_id = release_id
+
+    def setDateTimeValue(self, dataStr):
+        '''Converts the string value into a Db compatible form'''
+        if dataStr is None or dataStr == "?":
+          return "null"
+        dataStr = dataStr.replace('-','')
+        dataStr = dataStr.replace(':','')
+        return "'%s'" % dataStr
+
+    def generateDataRecord(self, dataLine):
+        '''Parses the given line string into a db compatible data record'''
+        # the line formats can be of the following forms
+        # ngfuergr.edi    run on host: lonlnx30   from 2011-09-20 21:41:02 to 2011-09-20 22:20:02
+        # ngcmsrgr.edi    run on host: lonlnx27   from 2011-09-20 23:05:03 to ?          ?
+
+        line_values_list = dataLine.split()
+        (package,layer) = line_values_list[0].split(".")[:2]
+        host = line_values_list[4]
+        start_date = self.setDateTimeValue(line_values_list[6])
+        start_time = self.setDateTimeValue(line_values_list[7])
+        end_date = self.setDateTimeValue(line_values_list[9])
+        end_time = self.setDateTimeValue(line_values_list[10])
+
+        outputDataLine = "null, %d, '%s', '%s', '%s', %s, %s, %s, %s" % (self.release_id, package, layer, host, start_date, start_time, end_date, end_time)
+        return outputDataLine
+
+    def getMsgStr():
+        return "package synchro"
+
+class ResponsibleParser(DbFileLoader):
+    '''Holds functionality for parsing the responsible data and updating the Db'''
+
+    def __init__(self, fileDir):
+        DbFileLoader.__init__(self, fileDir, "regr_responsibility.txt", "regr_responsibility.sql", "regr_responsibility")
+        self.developersQuerySet = Developer.objects.all()
+
+    def checkDeveloper(self, devName, devTeam):
+        try:
+            dev = self.developersQuerySet.get(username=devName)
+            # OK developer returned ok
+            return True
+        except Developer.DoesNotExist:
+            # Add a new developer
+            newDeveloper = Developer()
+            newDeveloper.populateBasicDetails(devName, devTeam)
+            print "Adding new developer: %s for team: %s" % (devName, devTeam)
+            newDeveloper.save()
+
+    def generateDataRecord(self, dataLine):
+        (package, function, team, primary, secondary, area) = [x.strip() for x in dataLine.split(',')][:6]
+        # We must ensure that the developer with the given username exists in the Db prior to adding the responsible record
+        self.checkDeveloper(primary, team)
+        self.checkDeveloper(secondary, team)
+        outputDataLine = "null, '%s', '%s', '%s', '%s', '%s', '%s'" % (package, function, team, primary, secondary, area)
+        return outputDataLine
+
+    def getMsgStr():
+        return "responsible records"
+
+class RegressionResultsParser(DbFileLoader):
+    '''Holds functionality for parsing the regression result data and updating the Db'''
+
+    def __init__(self, fileDir, release_id, statusTotals, sourceDataFile, laterProcessingLines, newFileObjectsToCreate, dbTableCache):
+        DbFileLoader.__init__(self, fileDir, sourceDataFile.filename, "imp_%s_reg_result.sql" % sourceDataFile.getPackage(), "regr_regressionresult")
+        self.developersQuerySet = Developers.all.objects()
+        self.release_id = release_id
+        self.statusTotals  = statusTotals
+        self.sourceDataFile = sourceDataFile
+        self.laterProcessingLines = laterProcessingLines
+        self.dbTableCache = dbTableCache
+        self.newFileObjectsToCreate = newFileObjectsToCreate
+
+    def convertDurationStr(durationStr):
+      seconds = float(durationStr)
+      m, s = divmod(seconds, 60)
+      h, m = divmod(m, 60)
+      return "'%d,%d,%.1f'" % (h, m, s)
+
+    def convertTimeStr(timeStr):
+        '''Converts a time str of the format: hh:mm:ss to hhmmss'''
+        return "'%s'" % (timeStr.replace(':',''))
+
+    def generateDataRecord(self, dataLine):
+         # RetrieveDistributionForRamp/DistributionRequestForRamp.Case_001.scn,OK,7.1,01:23:55\n
+        (cfFileName, cfStatus, cfDurationStr, cfStartTimeStr) = dataLine.split(',')[:4]
+        justDirName = os.path.dirname(cfFileName)
+        justFileName = os.path.basename(cfFileName)
+        # Update totals
+        self.statusTotals.updateTotals(cfStatus)
+        # check if this file already exist in the db
+        recordId = dbTableCache.getRecordId(self.sourceDataFile.getLayer(), justDirName, justFileName)
+        if recordId != -1:
+            # generate regression result
+            outputDataLine = "null, %s, %s, %s, 0, null, null, null, null, %s, %s" % (self.releaseId, recordId, str(self.statusTotals.getNumericValue(cfStatus)), self.convertDurationStr(cfDurationStr), self.convertTimeStr(cfStartTimeStr))
+            return outputDataLine
+        else:
+            # need to store this record for later processing, add it as a tuple
+            self.newFileObjectsToCreate((justDirName, justFileName))
+            self.laterProcessingLines.append(cfLine)
+        return None
+
+    def getMsgStr():
+        return "regression result records"
+
+class RegressionFileParser(DbFileLoader):
+    '''Holds functionality for parsing the regression file data and updating the Db'''
+
+    def __init__(self, fileDir, sourceBaseId, sourceDataFile, dbTableCache):
+        DbFileLoader.__init__(self, fileDir, sourceDataFile.filename, "imp_%s_reg_file.sql" % sourceDataFile.getPackage(), "regr_regressionfile")
+        self.developersQuerySet = Developers.all.objects()
+        self.sourceBaseId = sourceBaseId
+        self.sourceDataFile = sourceDataFile
+        self.dbTableCache = dbTableCache
+
+    def generateDataRecord(self, dataLine):
+        if not isinstance(cfLine, tuple):
+            print stderr, "Damn, expected a tuple, but got something else."
+        (directory, filename) = dataLine
+        # check if this file already exist in the db
+        recordId = self.dbTableCache.getRecordId(self.sourceDataFile.getLayer(), directory, fileName)
+        if recordId != -1:
+            outputDataLine = "null, %s, '%s', '%s', '%s', '%s'" % (self.sourceBaseId, self.sourceDataFile.getPackage(), self.sourceDataFile.getLayer(), directory, filename)
+        else:
+            print stderr, "The file has a negative id - file: %s %s %s %s" % (sourceDataFile.getPackage(), sourceDataFile.getLayer(), directory, fileName)
+        return outputDataLine
+
+    def getMsgStr():
+        return "regression file records"
+
+###############################################################################
 def updateReleaseRecordWithStats(oRelease, statusTotals):
     oRelease.total_files = statusTotals.total_count
     oRelease.total_pass  = statusTotals.total_pass
@@ -257,16 +393,7 @@ def updateReleaseRecordWithStats(oRelease, statusTotals):
     oRelease.total_other = statusTotals.total_other
     oRelease.save()
 
-def convertDurationStr(durationStr):
-  seconds = float(durationStr)
-  m, s = divmod(seconds, 60)
-  h, m = divmod(m, 60)
-  return "'%d,%d,%.1f'" % (h, m, s)
 
-def convertTimeStr(timeStr):
-    '''Converts a time str of the format: hh:mm:ss to hhmmss'''
-    return timeStr.replace(':','')
-    
 ###
 # Main method
 #
@@ -353,58 +480,51 @@ def main():
     for currentFile in dataFiles:
         sourceDataFile = SourceDataFile(currentFile)
         print "Proj: %s, Pack: %s, Layer: %s, Branch: %s" % (sourceDataFile.getProject(), sourceDataFile.getPackage(), sourceDataFile.getLayer(), sourceDataFile.getBranch())
-        dbutil = DatabaseUtil(sourceDataFile, code_base_id)
+        dbutil = DatabaseUtil(fileDir, sourceDataFile, code_base_id)
         dbTableCache = dbutil.readInDatabaseTableCache() # This is the regressionfile cache for the current package
 
         # Now read the data file, it should contain the name and status
         # The file can potentially be empty
         #f = open("fm.DEV.25-0-219/fm.nglddrgr.xml.DEV.data")
-        cf = open(currentFile)
         newRecordLines = []
-        for cfLine in cf:
-            # RetrieveDistributionForRamp/DistributionRequestForRamp.Case_001.scn,OK,7.1,01:23:55\n
-            (cfFileName, cfStatus, cfDurationStr, cfStartTimeStr) = cfLine.split(',')[:4]
-            justDirName = os.path.dirname(cfFileName)
-            justFileName = os.path.basename(cfFileName)
-            # Update totals
-            statusTotals.updateTotals(cfStatus)
-            # check if this file already exist in the db
-            recordId = dbTableCache.getRecordId(sourceDataFile.getLayer(), justDirName, justFileName)
-            if recordId != -1:
-                # generate regression result
-                dbutil.addNewRegressionResultRecord(release_id, recordId, str(statusTotals.getNumericValue(cfStatus)), convertDurationStr(cfDurationStr), convertTimeStr(cfStartTimeStr))
-            else:
-                # need to store this record for later processing
-                dbutil.addNewRegressionFileRecord(justDirName, justFileName)
-                newRecordLines.append(cfLine)
-
-        cf.close()
+        newFileObjectsToCreate = []
+        regressionResultsParser = RegressionResultsParser(fileDir, release_id, statusTotals, sourceDataFile, newRecordLines, newFileObjectsToCreate, dbTableCache)
         # Processed all the lines from the current datafile.
+        regressionResultsParser.processData()
+
         # Now save the new regression files
-        dbutil.saveRegressionFileRecords()
+        regFileParser = RegressionFileParser(fileDir, code_base_id, sourceDataFile, dbTableCache)
+        regFileParser.processData(newFileObjectsToCreate)
+        dbutil.loadRegressionFileData(regFileParser)
 
         # Update the cache now that the Db has been updated
         dbTableCache = dbutil.readInDatabaseTableCache(False)
-        # reprocess the regression files
-        for newLine in newRecordLines:
-            (cfFileName, cfStatus, cfDurationStr, cfStartTimeStr) = newLine.split(",")[:4]
-            justDirName = os.path.dirname(cfFileName)
-            justFileName = os.path.basename(cfFileName)
 
-            recordId = dbTableCache.getRecordId(sourceDataFile.getLayer(), justDirName, justFileName)
-            if recordId == -1:
-                print >> sys.stderr, "Damn, something wrong here, the saved file has a negative id - file: %s %s %s" % (sourceDataFile.getPackage(), sourceDataFile.getLayer(), cfFileName)
-                continue
-            dbutil.addNewRegressionResultRecord(release_id, recordId, str(statusTotals.getNumericValue(cfStatus)), convertDurationStr(cfDurationStr), convertTimeStr(cfStartTimeStr))
+        # reprocess the regression results which we could not before
+        # now process the saved lines
+        regressionResultsParser.dbTableCache = dbTableCache
+        regressionResultsParser.processData(newRecordLines)
 
-        # Now save all the regression results.
-        dbutil.saveRegressionResultRecords()
+        # Now save the new regression result records
+        dbutil.loadRegressionResultData(regressionResultsParser)
+
     # Right all files processed
     print "Processed files, Totals: %s" % (statusTotals)
 
     # Update the release record
     updateReleaseRecordWithStats(oRelease, statusTotals)
+
+    # Process and Load the package sync data for the server logs functionality
+    dbutil.loadPackageSyncData(release_id)
+
     print "done"
 
 if __name__ == "__main__":
     main()
+#    fileDir = sys.argv[1];
+#    if not os.path.isdir(fileDir):
+#        print "Error: The given dir: %s does not exist." % fileDir
+#        sys.exit()
+#    dbutil = DatabaseUtil(fileDir, None, None)
+#    dbutil.loadPackageSyncData(14)
+

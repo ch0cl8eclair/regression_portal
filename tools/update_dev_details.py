@@ -10,13 +10,15 @@ The username from the Db is used to id the user from the OCR data and the user's
 Any users in the Db which are not listed in the OCR data are output as errors.
 '''
 
-USE_FILE = 1
+USE_FILE = 0
+NO_SAVE = 0
 RETRIEVE_TEAM_DETAILS_URL = 'http://gcnet.nce.amadeus.net/application/poc/api/json/team/%s/users/'
 
 TEAM_GROUP_MAP = {
   'FMW' : 'DEV-ASL-GCD-FMG-FMW',
   'FMF' : 'DEV-ASL-GCD-FMG-FMF',
   'FMD' : 'DEV-ASL-GCD-FLI-FMD',
+  'JFE' : 'DEV-ASL-GCD-FMG-JFE',
 }
 
 def getOCRTeamData(team):
@@ -31,11 +33,16 @@ def getOCRTeamData(team):
         full_team_name = TEAM_GROUP_MAP[team]
         json_url = RETRIEVE_TEAM_DETAILS_URL % full_team_name
         try:
-            with urllib2.urlopen(json_url) as u:
-                json_text = u.read()
-        except URLError, e:
-            print e.reason
+            u = urllib2.urlopen(json_url)
+            json_text = u.read()
+        except urllib2.URLError, e:
+            print stderr, e.reason
             return None
+        finally:
+            try:
+                u.close()
+            except NameError:
+                pass
     data_hash = anyjson.deserialize(json_text)
     return data_hash
 
@@ -72,45 +79,51 @@ def updateDeveloperDetails(developer, data_firstname, data_surname, data_email):
         developer.surname = data_surname
         developer.email = data_email
         print "Updating developer: %s" % developer.firstname
-        developer.save()
+        if not NO_SAVE:
+          developer.save()
 
 ####################################
 # Main
 #
-print "beginning"
-developers = None
-try:
-    developers = Developer.objects.all()
-except Developer.DoesNotExist:
-    print "failed to find any developers to update"
-    sys.exit()
+def main():
+    print "beginning"
+    developers = None
+    try:
+        developers = Developer.objects.all()
+    except Developer.DoesNotExist:
+        print "failed to find any developers to update"
+        sys.exit()
 
-for developer in developers:
-  username = developer.username
-  firstInitial = username[0].lower()
-  surname = username[1:].lower()
-  team = developer.team
-  print "processing db user: %s from team: %s" % (username, team)
+    for developer in developers:
+      username = developer.username
+      team = developer.team
+      # Create a new Developer object which will auto populate certain fields from username str
+      tmpDevObj = Developer()
+      tmpDevObj.populateBasicDetails(username, team)
+      print "processing db user: %s from team: %s" % (username, team)
 
-  developer_data = getTeamData(team)
-  # Check that the team exists
-  if developer_data is None:
-    print "Failed to get developer details for team: %s" % team
-    # TODO should we add in dummy data to ensure data integrity
-    continue
+      developer_data = getTeamData(team)
+      # Check that the team exists
+      if developer_data is None:
+        print "Failed to get developer details for team: %s" % team
+        # TODO should we add in dummy data to ensure data integrity
+        continue
 
-  processed_developer = False
-  for people in developer_data['people']:
-    dd_lastname = str(people['last_name']).lower()
-    dd_firstname = str(people['first_name']).lower()
+      processed_developer = False
+      for people in developer_data['people']:
+        dd_lastname = str(people['last_name']).lower()
+        dd_firstname = str(people['first_name']).lower()
 
-    if dd_lastname.startswith(surname) and dd_firstname.startswith(firstInitial):
-        processed_developer = True
-        data_firstname = dd_firstname.capitalize()
-        data_surname   = dd_lastname.capitalize()
-        data_email     = str(people['internet_address'])
-        updateDeveloperDetails(developer, data_firstname, data_surname, data_email)
+        if dd_lastname.startswith(tmpDevObj.surname) and dd_firstname.startswith(tmpDevObj.firstname):
+            processed_developer = True
+            data_firstname = dd_firstname.capitalize()
+            data_surname   = dd_lastname.capitalize()
+            data_email     = str(people['internet_address'])
+            updateDeveloperDetails(developer, data_firstname, data_surname, data_email)
 
-  if not processed_developer:
-    print "Failed to process user: %s" % username
-print "done"
+      if not processed_developer:
+        print "Failed to process user: %s" % username
+    print "done"
+
+if __name__ == "__main__":
+    main()
