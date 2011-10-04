@@ -2,7 +2,6 @@ from django.shortcuts import get_object_or_404, get_list_or_404, render_to_respo
 from django.http import HttpResponseRedirect, HttpResponse, Http404
 from regr.models import *
 from regr.utils import process_package_stats_list
-from converttocsv import StatusTotals
 from django.db.models import Count
 # for the pie chart generation
 from pyofc2  import *
@@ -279,6 +278,7 @@ LIST_FILES_HTML       = 'listfiles.html'
 RELEASE_SUMMARY_HTML  = 'releasesummary.html'
 LIST_LAYERS_HTML = 'listlayers.html'
 LIST_DIRS_HTML = 'listdirs.html'
+COMPLIANCE_HTML = 'compliance.html'
 
 ###############################################################################
 # Main list data requests
@@ -371,6 +371,28 @@ def display_release_summary(request, project, branch, release):
 
     return render_to_response(RELEASE_SUMMARY_HTML, {'reg_params': paramWrapper, \
                                                      'pkg_hash_list' : pkg_hash_list})
+
+def display_compliance(request, project, branch, release):
+    '''Display the compliance figures for the selected release'''
+    paramWrapper = RegressionRequestWrapper(project, branch, release)
+    selected_release = paramWrapper.getRelease()
+
+    pkgs_list = paramWrapper.getPackagesList()
+    regQuerySet = RegressionResult.objects.filter(release__id__exact=selected_release.id)
+
+    # Check if there are any compliance warnings and display a warning on screen
+    compliance_folders = regQuerySet.filter(file__package__startswith='ngcp', status='1').values('file__package', 'file__layer', 'file__directory_path').order_by('file__package').annotate(Count('file__directory_path'))
+
+    # Get the compliance source file data
+    compliance_files = ComplianceFile.objects.filter(release__exact=selected_release.id)
+
+    # Get the status figures per package
+    pkg_hash_list = process_package_stats_list(regQuerySet, pkgs_list, None, None)
+
+    return render_to_response(COMPLIANCE_HTML, {'reg_params': paramWrapper, \
+                                                'pkg_hash_list' : pkg_hash_list, \
+                                                'compliance_folders' : compliance_folders, \
+                                                'compliance_files' : compliance_files})
 
 def display_layers(request, project, branch, release, package):
     '''Display the results for the selected package'''
@@ -469,7 +491,7 @@ def chart_data_test(request, type='bar', releaseID=-1):
     b1.text="Failures"
 
     # todo update for specified release
-    results = RegressionResult.objects.filter(status='1', release__id__exact=releaseID).values('file__package').annotate(Count('file__package')).order_by('file__package')
+    results = RegressionResult.objects.filter(status='1', release__id__exact=releaseID).values('file__package').order_by('file__package').annotate(Count('file__package'))
     package_names = []
     package_failures = []
     for result_item in results:

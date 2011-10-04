@@ -14,7 +14,7 @@ import glob
 #print "Django version is: %s" % django.get_version()
 
 USAGE="""Usage: converttocsv.py <regression file dir>"""
-
+NO_SAVE = False
 ###############################################################################
 # Class definitions
 ###############################################################################
@@ -123,6 +123,7 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
         p2 = Popen(["sqlite3", sqllitefilename], stdin=p1.stdout, stdout=PIPE)
         p1.stdout.close()
         output = p2.communicate()[1]
+
         if output is None:
             return True
         print >> sys.stderr, "error status of export was: %s" % output
@@ -160,10 +161,14 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
     def __saveRecordsSql__(self, importFile, databaseTable, databaseRecords, deleteExistingRecords=False):
         '''Imports the given records into the database by way of an intermediate sql script file'''
         # Generate the import sql file
+
         self.__writeRecordsToFileAsSql__(importFile, databaseTable, databaseRecords, deleteExistingRecords)
+        if NO_SAVE:
+            return True
         # Now import the file into the Db
         if settings.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
             sqllitefilename=settings.DATABASES["default"]["NAME"]
+
         p1 = Popen(["cat", importFile], stdout=PIPE)
         p2 = Popen(["sqlite3", sqllitefilename], stdin=p1.stdout, stdout=PIPE)
         p1.stdout.close()
@@ -172,8 +177,15 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
             return True
         return False
 
-    def __loadGenericData__(self, dbFileLoaderObj):
-        dbFileLoaderObj.processData()
+    def __loadGenericData__(self, dbFileLoaderObj, runProcess=True):
+        if runProcess:
+            try:
+                dbFileLoaderObj.processData()
+            except IOError:
+                print >> sys.stderr, "Failed to update table %s with data, table not updated." % dbFileLoaderObj.tableName
+                return False
+        if len(dbFileLoaderObj.getDbRecords()) == 0:
+            return False
         # Generate the import sql file
         result = self.__saveRecordsSql__(dbFileLoaderObj.sqlFileName, dbFileLoaderObj.tableName, dbFileLoaderObj.getDbRecords(), dbFileLoaderObj.deleteExistingRecords)
         if not result:
@@ -184,9 +196,18 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
     ###
     # Package Synchro records
     #
-    def loadPackageSyncData(self, release_id):
-        pkgsync = PackageSyncParser(self.fileDir, release_id)
+    def loadPackageSyncData(self, fileDir, release_id):
+        pkgsync = PackageSyncParser(fileDir, release_id)
         return self.__loadGenericData__(pkgsync)
+
+    ###
+    # Compliance records
+    #
+    def loadComplianceData(self, fileDir, release_id):
+        print "running compliance parser"
+        compliance = ComplianceParser(fileDir, release_id)
+        print "compliance parser run, now loading data..."
+        return self.__loadGenericData__(compliance)
 
     ###
     # Responsible and developer records
@@ -198,20 +219,23 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
     ###
     # Regression result records
     #
-    def loadRegressionResultData(self, regressionResultMgr):
-        return self.__loadGenericData__(regressionResultMgr)
+    def loadRegressionResultData(self, regressionResultMgr, runProcess=True):
+        return self.__loadGenericData__(regressionResultMgr, runProcess)
 
     ###
     # Regression file records
     #
-    def loadRegressionFileData(self, regressionFileMgr):
-        return self.__loadGenericData__(regressionFileMgr)
+    def loadRegressionFileData(self, regressionFileMgr, runProcess=True):
+        return self.__loadGenericData__(regressionFileMgr, runProcess)
 
 ###############################################################################
 
 class DbFileLoader:
     def __init__(self, parentDir, dataFileName, sqlFileName, tableName):
-        self.dataFileName = os.sep.join([parentDir, dataFileName])
+        if parentDir is not None:
+            self.dataFileName = os.sep.join([parentDir, dataFileName])
+        else:
+            self.dataFileName = dataFileName
         self.sqlFileName = sqlFileName
         self.tableName = tableName
         self.db_records = None
@@ -221,6 +245,13 @@ class DbFileLoader:
     def processData(self, recordLines=None):
         if recordLines is not None:
             return self.__processData2__(recordLines)
+
+        if not os.path.isfile(self.dataFileName):
+            print >> sys.stderr, "Unable to open the following data file: %s " % self.dataFileName
+
+        #curpath = os.path.abspath(os.curdir)
+        #print "Current path is: %s" % (curpath)
+        #print "Trying to open: %s" % (os.path.join(curpath, self.dataFileName))
 
         cf = open(self.dataFileName)
         for cfLine in cf:
@@ -245,7 +276,7 @@ class DbFileLoader:
     def getDbRecords(self):
         return self.db_records;
 
-    def getMsgStr():
+    def getMsgStr(self):
         return "data records"
 
 class PackageSyncParser(DbFileLoader):
@@ -280,14 +311,60 @@ class PackageSyncParser(DbFileLoader):
         outputDataLine = "null, %d, '%s', '%s', '%s', %s, %s, %s, %s" % (self.release_id, package, layer, host, start_date, start_time, end_date, end_time)
         return outputDataLine
 
-    def getMsgStr():
+    def getMsgStr(self):
         return "package synchro"
+
+class ComplianceParser(DbFileLoader):
+    '''Holds functionality for parsing the compliance data and updating the Db'''
+
+    def __init__(self, fileDir, release_id):
+        DbFileLoader.__init__(self, fileDir, "compliance.csv", "compliance.sql", "regr_compliancefile")
+        self.release_id = release_id
+
+    def setDateTimeValue(self, dataStr):
+        '''Converts the string value into a Db compatible form'''
+        if dataStr is None or dataStr == "?":
+          return "null"
+        dataStr = dataStr.replace('-','')
+        dataStr = dataStr.replace(':','')
+        return "'%s'" % dataStr
+
+    def generateDataRecord(self, dataLine):
+        '''Parses the given line string into a db compatible data record'''
+        # the line formats can be of the following forms
+        # FuelWeightAndIndexLogger.cpp,1.1.2.2,1.1.2.2
+        # LinearLoadLimitsManager.cpp,1.1.2.1,1.1.2.2,gchazot,2011-08-08
+
+
+        outputDataLine = None
+        line_values_list = dataLine.split(",")
+        filename  = 'null'
+        loggedVer = 'null'
+        rcsVer    = 'null'
+        user      = 'null'
+        modDate   = 'null'
+
+        if len(line_values_list) >= 3:
+          filename  = line_values_list[0]
+          loggedVer = line_values_list[1]
+          rcsVer    = line_values_list[2]
+          if len(line_values_list) == 5:
+            user = line_values_list[3]
+            modDate = self.setDateTimeValue(line_values_list[4])
+          if user is not None:
+            user = "'%s'" % user
+          outputDataLine = "null, %d, '%s', '%s', '%s', %s, %s" % (self.release_id, filename, loggedVer, rcsVer, user, modDate)
+        print "Output line: %s" % outputDataLine
+        return outputDataLine
+
+    def getMsgStr(self):
+        return "compliance"
 
 class ResponsibleParser(DbFileLoader):
     '''Holds functionality for parsing the responsible data and updating the Db'''
 
     def __init__(self, fileDir):
-        DbFileLoader.__init__(self, fileDir, "regr_responsibility.txt", "regr_responsibility.sql", "regr_responsibility")
+        DbFileLoader.__init__(self, fileDir, "regr_responsibility.csv", "regr_responsibility.sql", "regr_responsibility")
         self.developersQuerySet = Developer.objects.all()
 
     def checkDeveloper(self, devName, devTeam):
@@ -310,7 +387,7 @@ class ResponsibleParser(DbFileLoader):
         outputDataLine = "null, '%s', '%s', '%s', '%s', '%s', '%s'" % (package, function, team, primary, secondary, area)
         return outputDataLine
 
-    def getMsgStr():
+    def getMsgStr(self):
         return "responsible records"
 
 class RegressionResultsParser(DbFileLoader):
@@ -318,21 +395,29 @@ class RegressionResultsParser(DbFileLoader):
 
     def __init__(self, fileDir, release_id, statusTotals, sourceDataFile, laterProcessingLines, newFileObjectsToCreate, dbTableCache):
         DbFileLoader.__init__(self, fileDir, sourceDataFile.filename, "imp_%s_reg_result.sql" % sourceDataFile.getPackage(), "regr_regressionresult")
-        self.developersQuerySet = Developers.all.objects()
+        self.developersQuerySet = Developer.objects.all()
         self.release_id = release_id
         self.statusTotals  = statusTotals
         self.sourceDataFile = sourceDataFile
         self.laterProcessingLines = laterProcessingLines
         self.dbTableCache = dbTableCache
         self.newFileObjectsToCreate = newFileObjectsToCreate
+        self.instanceCountHash = {}
+        self.disableStatsForReprocess = False
 
-    def convertDurationStr(durationStr):
+    def resetForSecondParse(self, dbTableCache):
+        self.laterProcessingLines = []
+        self.newFileObjectsToCreate = []
+        self.dbTableCache = dbTableCache
+        self.disableStatsForReprocess = True
+
+    def convertDurationStr(self, durationStr):
       seconds = float(durationStr)
       m, s = divmod(seconds, 60)
       h, m = divmod(m, 60)
       return "'%d,%d,%.1f'" % (h, m, s)
 
-    def convertTimeStr(timeStr):
+    def convertTimeStr(self, timeStr):
         '''Converts a time str of the format: hh:mm:ss to hhmmss'''
         return "'%s'" % (timeStr.replace(':',''))
 
@@ -341,21 +426,28 @@ class RegressionResultsParser(DbFileLoader):
         (cfFileName, cfStatus, cfDurationStr, cfStartTimeStr) = dataLine.split(',')[:4]
         justDirName = os.path.dirname(cfFileName)
         justFileName = os.path.basename(cfFileName)
+        # Check for an existing file results
+        try:
+            val = self.instanceCountHash[cfFileName]
+            print "-- reg res: %s of time %s already entered in hash, orig time: %s" % (cfFile, val, cfStartTimeStr)
+        except:
+            self.instanceCountHash[cfFileName] = cfStartTimeStr
         # Update totals
-        self.statusTotals.updateTotals(cfStatus)
+        if not self.disableStatsForReprocess:
+          self.statusTotals.updateTotals(cfStatus)
         # check if this file already exist in the db
-        recordId = dbTableCache.getRecordId(self.sourceDataFile.getLayer(), justDirName, justFileName)
+        recordId = self.dbTableCache.getRecordId(self.sourceDataFile.getLayer(), justDirName, justFileName)
         if recordId != -1:
             # generate regression result
-            outputDataLine = "null, %s, %s, %s, 0, null, null, null, null, %s, %s" % (self.releaseId, recordId, str(self.statusTotals.getNumericValue(cfStatus)), self.convertDurationStr(cfDurationStr), self.convertTimeStr(cfStartTimeStr))
+            outputDataLine = "null, %s, %s, %s, 0, null, null, null, null, %s, %s" % (self.release_id, recordId, str(self.statusTotals.getNumericValue(cfStatus)), self.convertDurationStr(cfDurationStr), self.convertTimeStr(cfStartTimeStr))
             return outputDataLine
         else:
             # need to store this record for later processing, add it as a tuple
-            self.newFileObjectsToCreate((justDirName, justFileName))
-            self.laterProcessingLines.append(cfLine)
+            self.newFileObjectsToCreate.append((justDirName, justFileName))
+            self.laterProcessingLines.append(dataLine)
         return None
 
-    def getMsgStr():
+    def getMsgStr(self):
         return "regression result records"
 
 class RegressionFileParser(DbFileLoader):
@@ -363,24 +455,29 @@ class RegressionFileParser(DbFileLoader):
 
     def __init__(self, fileDir, sourceBaseId, sourceDataFile, dbTableCache):
         DbFileLoader.__init__(self, fileDir, sourceDataFile.filename, "imp_%s_reg_file.sql" % sourceDataFile.getPackage(), "regr_regressionfile")
-        self.developersQuerySet = Developers.all.objects()
+        self.developersQuerySet = Developer.objects.all()
         self.sourceBaseId = sourceBaseId
         self.sourceDataFile = sourceDataFile
         self.dbTableCache = dbTableCache
+        self.instanceCountHash = {}
 
     def generateDataRecord(self, dataLine):
-        if not isinstance(cfLine, tuple):
-            print stderr, "Damn, expected a tuple, but got something else."
+        assert isinstance(dataLine, tuple) == True
+
         (directory, filename) = dataLine
-        # check if this file already exist in the db
-        recordId = self.dbTableCache.getRecordId(self.sourceDataFile.getLayer(), directory, fileName)
-        if recordId != -1:
-            outputDataLine = "null, %s, '%s', '%s', '%s', '%s'" % (self.sourceBaseId, self.sourceDataFile.getPackage(), self.sourceDataFile.getLayer(), directory, filename)
-        else:
-            print stderr, "The file has a negative id - file: %s %s %s %s" % (sourceDataFile.getPackage(), sourceDataFile.getLayer(), directory, fileName)
+        key = os.sep.join([directory, filename])
+        # check for existing file entry
+        try:
+            val = self.instanceCountHash[key]
+            print "-- file: %s already exists" % (key)
+        except:
+            self.instanceCountHash[key] = 0
+
+        outputDataLine = "null, %s, '%s', '%s', '%s', '%s'" % (self.sourceBaseId, self.sourceDataFile.getPackage(), self.sourceDataFile.getLayer(), directory, filename)
+
         return outputDataLine
 
-    def getMsgStr():
+    def getMsgStr(self):
         return "regression file records"
 
 ###############################################################################
@@ -417,7 +514,7 @@ def main():
     ###
     # read the version.txt file
     #
-    versionFile=fileDir + os.sep + 'version.txt'
+    versionFile=os.sep.join([fileDir, 'version.txt'])
     print "version file is: %s"  % versionFile
     if not os.path.isfile(versionFile):
         print "Error version file does not exist"
@@ -433,6 +530,26 @@ def main():
     releaseDate = releaseDate.strip() # remove leading space
     print "Release version is: %s, release date is: %s" % (releaseVersion, releaseDate)
 
+    # Check for the presence of the compliance file to determine if we should process it or not
+    compliance_file = "compliance.csv"
+    parseComplianceData = False
+    if os.path.isfile(still_running_file_name):
+      parseComplianceData = True
+
+    ###
+    # Obtain any still running details
+    # and update the release object
+    #
+    still_running_file_name = "still_running.txt"
+    running_str = ""
+    running_list = []
+    if os.path.isfile(still_running_file_name):
+      still_running_file = open(still_running_file_name)
+      for srLine in still_running_file:
+        running_list.append(srLine.rstrip())
+      still_running_file.close()
+      if len(running_list) > 0:
+        running_str = ", ".join(running_list)
 
     ###
     # Obtain the code base record
@@ -461,7 +578,8 @@ def main():
         rel_date = datetime.datetime.fromtimestamp(time.mktime(time.strptime(timestring, time_format)))
         oRelease = Release(code_base=oCodeBase, name=releaseVersion, date=rel_date)
         oRelease.initialise_counters()
-        oRelease.save()
+        if not NO_SAVE:
+          oRelease.save()
         release_id = oRelease.id
 
     print "Release id for release %s is: %d" % (releaseVersion, release_id)
@@ -486,27 +604,35 @@ def main():
         # Now read the data file, it should contain the name and status
         # The file can potentially be empty
         #f = open("fm.DEV.25-0-219/fm.nglddrgr.xml.DEV.data")
-        newRecordLines = []
+        laterProcessingLines = []
         newFileObjectsToCreate = []
-        regressionResultsParser = RegressionResultsParser(fileDir, release_id, statusTotals, sourceDataFile, newRecordLines, newFileObjectsToCreate, dbTableCache)
+        regressionResultsParser = RegressionResultsParser(None, release_id, statusTotals, sourceDataFile, laterProcessingLines, newFileObjectsToCreate, dbTableCache)
         # Processed all the lines from the current datafile.
         regressionResultsParser.processData()
 
         # Now save the new regression files
-        regFileParser = RegressionFileParser(fileDir, code_base_id, sourceDataFile, dbTableCache)
+        regFileParser = RegressionFileParser(None, code_base_id, sourceDataFile, dbTableCache)
         regFileParser.processData(newFileObjectsToCreate)
-        dbutil.loadRegressionFileData(regFileParser)
+        dbutil.loadRegressionFileData(regFileParser, False)
 
+        #print "File data saved, now updating regression results"
         # Update the cache now that the Db has been updated
         dbTableCache = dbutil.readInDatabaseTableCache(False)
 
         # reprocess the regression results which we could not before
         # now process the saved lines
-        regressionResultsParser.dbTableCache = dbTableCache
-        regressionResultsParser.processData(newRecordLines)
+        regressionResultsParser.resetForSecondParse(dbTableCache)
+        regressionResultsParser.processData(laterProcessingLines)
 
         # Now save the new regression result records
-        dbutil.loadRegressionResultData(regressionResultsParser)
+        dbutil.loadRegressionResultData(regressionResultsParser, False)
+
+
+
+    # #
+    # Update the release object with the still running details if any present
+    if os.path.isfile(still_running_file_name) and len(running_list) > 0:
+      oRelease.comment = "Pkgs: " + running_str  + " are still running."
 
     # Right all files processed
     print "Processed files, Totals: %s" % (statusTotals)
@@ -515,16 +641,27 @@ def main():
     updateReleaseRecordWithStats(oRelease, statusTotals)
 
     # Process and Load the package sync data for the server logs functionality
-    dbutil.loadPackageSyncData(release_id)
+    dbutil.loadPackageSyncData(None, release_id)
+
+    # Process and Load the complinace data if present
+    if parseComplianceData:
+      dbutil.loadComplianceData(None, release_id)
 
     print "done"
 
 if __name__ == "__main__":
-    main()
-#    fileDir = sys.argv[1];
-#    if not os.path.isdir(fileDir):
-#        print "Error: The given dir: %s does not exist." % fileDir
-#        sys.exit()
-#    dbutil = DatabaseUtil(fileDir, None, None)
-#    dbutil.loadPackageSyncData(14)
+    loadPkgDataOnly = False
+    loadComplianceData = False
+    if not loadPkgDataOnly:
+      main()
+    else:
+      fileDir = sys.argv[1];
+      if not os.path.isdir(fileDir):
+          print "Error: The given dir: %s does not exist." % fileDir
+          sys.exit()
+      dbutil = DatabaseUtil(fileDir, None, None)
+      if loadComplianceData:
+        dbutil.loadComplianceData(fileDir, 20)
+      else:
+        dbutil.loadPackageSyncData(fileDir, 17)
 

@@ -13,8 +13,11 @@ urlpatterns = patterns('',
     # index, main welcome page
     (r'^$', 'regr.views.welcome'),
     
-    # index, regression
+    # regression app urls
     (r'^regression/', include('regr.urls')),
+    
+    # validate app urls
+    (r'^validate/', include('validate.urls')),
     
     # Data urls
     (r'^data/$', 'regr.views.chart_data'),

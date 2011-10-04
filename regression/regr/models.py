@@ -147,6 +147,18 @@ class PackageSynchro(models.Model):
     def __unicode__(self):
         return "PkgSync %s %s %s %s [%s %s] [%s %s]" %(self.release.id, self.package, self.layer, self.host, self.start_date, self.start_time, self.end_date, self.end_time)
 
+class ComplianceFile(models.Model):
+    '''Holds information on a source file which is used for compliance'''
+    release = models.ForeignKey(Release)
+    filename = models.CharField(max_length = 40)
+    logged_version = models.CharField(max_length = 20)
+    rcs_version = models.CharField(max_length = 20)
+    user = models.CharField(max_length = 10, null=True, blank=True)
+    date = models.CharField(max_length = 8, null=True, blank=True)
+
+    def __unicode__(self):
+        return "%s %s %s %s %s" %(self.filename, self.logged_version, self.rcs_version, self.user, self.date)
+
 ###############################################################################
 class StatusTotals:
     '''Used to process and hold the total regression stats for a regression run. Also has features to decode encode the status value'''
