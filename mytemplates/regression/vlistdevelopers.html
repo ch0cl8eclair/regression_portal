@@ -1,0 +1,32 @@
+    {% extends "basevalidate.html" %}
+
+    {% block content %}
+    {# List developers #}
+    <h2>Developers</h2>
+    {% if object_list %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Firstname</th>
+                    <th>Surname</th>
+                    <th>Team</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for developer in object_list %}
+                <tr>
+                    <td>{{ developer.username }}</td>
+                    <td>{{ developer.firstname }}</td>
+                    <td>{{ developer.surname }}</td>
+                    <td>{{ developer.team }}</td>
+                    <td>{{ developer.email }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <P>No Developers found.<P>
+    {% endif %}
+    {% endblock content %}

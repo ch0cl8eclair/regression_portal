@@ -1,0 +1,19 @@
+    {% extends "base.html" %}
+
+    {% block title %}Validate{% endblock %}
+    
+    {# Populate the sidebar with no links #}
+    {% block sidebar %}
+        <ul>
+            <li><a href="/validate/teams/">List Teams</a></li>
+            <li><a href="/validate/developers/">List Developers</a></li>
+            <li><a href="/validate/message/">Search Responsible</a></li>
+            <li><a href="/validate/usermessage/">Search User Msgs</a></li>
+        <ul>
+    {% endblock sidebar %}
+
+    {% block content %}
+    {# General help and information on site #}
+    <h2>Validate</h2>
+    <P>Weclome to the validate screen, from here you can access various information on regression responsibility and failures validation.
+    {% endblock content %}

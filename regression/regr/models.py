@@ -115,6 +115,14 @@ class Developer(models.Model):
         self.team = team
         self.email = "%s@amadeus.com" %username
 
+    def getDisplayName(self):
+        if self.firstname is not None:
+            return "%s %s" % (self.firstname, self.surname)
+        else:
+            return self.username
+    class Meta:
+        ordering = ['username']
+
     def __unicode__(self):
         return "%s %s %s %s %s" %(self.username, self.team, self.firstname, self.surname, self.email)
 
@@ -127,8 +135,11 @@ class Responsibility(models.Model):
     secondary = models.ForeignKey(Developer, related_name='secondary_developer_set')
     area      = models.CharField(max_length=30, null=True, blank=True)
 
+    class Meta:
+        ordering = ['package', 'function']
+
     def __unicode__(self):
-        return "%s %s %s %s %s %s" % (self.package, self.function, self.team, self.primary, self.secondary, self.area)
+        return "%s, %s, %s, %s, %s, %s" % (self.package, self.function, self.team, self.primary.getDisplayName(), self.secondary.getDisplayName(), self.area)
 
 class PackageSynchro(models.Model):
     '''Holds information on a package regarding regression run'''
@@ -143,6 +154,8 @@ class PackageSynchro(models.Model):
     end_date = models.CharField(max_length = 8, null=True, blank=True)
     end_time = models.CharField(max_length = 6, null=True, blank=True)
 
+    class Meta:
+        ordering = ['release', 'package', 'layer']
 
     def __unicode__(self):
         return "PkgSync %s %s %s %s [%s %s] [%s %s]" %(self.release.id, self.package, self.layer, self.host, self.start_date, self.start_time, self.end_date, self.end_time)

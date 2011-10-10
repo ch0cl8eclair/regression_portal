@@ -1,0 +1,15 @@
+    {% extends "basevalidate.html" %}
+
+    {% block content %}
+    {# List teams #}
+    <h2>Teams</h2>
+    {% if object_list %}
+        <ul>
+        {% for team in object_list %}
+            <li><a href="/validate/team/{{ team.team }}">{{ team.team }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <P>No teams found.<P>
+    {% endif %}
+    {% endblock content %}

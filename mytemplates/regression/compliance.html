@@ -1,0 +1,61 @@
+    {% extends "basedetails.html" %}
+    
+    {% block pagename %}Compliance Details{% endblock pagename %}
+    
+    {% block pagecontent %}
+    
+    <div>
+    {% if compliance_files %}
+        <div>
+        <table class="compliance_files" >
+            <thead>
+            <tr>
+            <th>Filename</th><th>Conf Version</th><th>CVS Version</th><th>User</th><th>Date</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for compliance_file in compliance_files %}
+                <tr>
+                    <td class=cfilename>{{compliance_file.filename}}</td>
+                    <td class=clogged>{{compliance_file.file__package}}</td>
+                    <td class=crcs>{{compliance_file.file__layer}}</td>
+                    <td class=cuser>{{compliance_file.file__directory_path}}</td>
+                    <td class=cdate>{{compliance_file.file__directory_path__count}}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    {% else %}
+        <p>No Source File Data recorded for release.
+    {% endif %}
+    </div>
+    
+    <div>
+        {% if compliance_folders %}
+            <div>
+            <table class="compliance_folders">
+                <thead>
+                <tr>
+                <th>Filename</th><th>Conf Version</th><th>CVS Version</th><th>User</th><th>Date</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for compliance_folder in compliance_folders %}
+                    <tr>
+                        <td class=cpackage>{{compliance_folder.file__package}}</td>
+                        <td class=clayer>{{compliance_folder.file__layer}}</td>
+                        <td class=cdirectory><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ compliance_folder.file__package }}/{{ compliance_folder.file__layer }}/{{ compliance_folder.file__package }}">{{compliance_folder.file__directory_path}}</a></td>
+                        <td class=cfail>{{compliance_folder.file__directory_path__count}}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% else %}
+            <p>No Failing compliance directories found for release.
+        {% endif %}
+    </div>
+    
+    <div style="clear: both"></div>
+    {% endblock pagecontent %}

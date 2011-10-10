@@ -1,3 +1,8 @@
+import os
+import sys
+from os.path import abspath
+import posixpath
+
 # Django settings for regression project.
 
 DEBUG = True
@@ -7,19 +12,35 @@ ADMINS = (
     # ('bklair', 'baldevklair@yahoo.co.uk'),
 )
 
-TOP_DIR= 'C:/dev/webproj'
+# Get the name of the current dir
+REG_DIR = os.path.dirname(os.path.abspath(__file__))
+TOP_DIR_LOCAL = os.path.dirname(REG_DIR)
+
+# Maintain unix style path for config
+TOP_DIR = TOP_DIR_LOCAL.replace(os.sep, posixpath.sep)
+
+PROJECT_PATH_LIST = []
+PROJECT_PATH_LIST.append(REG_DIR)
+
+for mypath in PROJECT_PATH_LIST:
+  if mypath not in sys.path:
+    sys.path.append(mypath)
+
 MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': '%s/regression/regression.db' % TOP_DIR,                      # Or path to database file if using sqlite3.
+        'NAME': '%s/regression/db/regression.db' % TOP_DIR,                      # Or path to database file if using sqlite3.
         'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
     }
 }
+
+#CACHE_BACKEND = "file://%s/regression/cache" % TOP_DIR
+CACHE_BACKEND = 'dummy://'
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -74,7 +95,12 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.cache.UpdateCacheMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',
 )
+
+CACHE_MIDDLEWARE_SECONDS= 60 * 60 * 24
+CACHE_MIDDLEWARE_KEY_PREFIX=""
 
 ROOT_URLCONF = 'regression.urls'
 

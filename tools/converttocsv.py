@@ -10,11 +10,23 @@ import datetime
 import sys
 import os
 import glob
+import getopt
 
 #print "Django version is: %s" % django.get_version()
 
-USAGE="""Usage: converttocsv.py <regression file dir>"""
+USAGE="""Usage: converttocsv.py [-h -v -p <rel#> -c <rel#> -r] <regression file dir>
+-h help
+-v verbose
+-p <rel#> load package data only from the dir against the given release number
+-c <rel#> load compliance data only from the dir against the given release number
+-r load responsible data only from the dir
+If no options provided then all data is loaded by default.
+"""
 NO_SAVE = False
+
+def usage():
+  print USAGE
+
 ###############################################################################
 # Class definitions
 ###############################################################################
@@ -163,19 +175,39 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
         # Generate the import sql file
 
         self.__writeRecordsToFileAsSql__(importFile, databaseTable, databaseRecords, deleteExistingRecords)
+        return self.__executeSqlOnDb__(importFile)
+
+    def __executeSqlOnDb__(self, sqlFileToRun):
+        '''Runs the given sql file against the Db, whether import or update script, it return a results status'''
+
         if NO_SAVE:
             return True
         # Now import the file into the Db
         if settings.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
             sqllitefilename=settings.DATABASES["default"]["NAME"]
 
-        p1 = Popen(["cat", importFile], stdout=PIPE)
+        p1 = Popen(["cat", sqlFileToRun], stdout=PIPE)
         p2 = Popen(["sqlite3", sqllitefilename], stdin=p1.stdout, stdout=PIPE)
         p1.stdout.close()
         output = p2.communicate()[1]
         if output is None:
             return True
         return False
+
+    def __removeRelease__(self, releaseId):
+        '''Removes the given release from the Db'''
+        dbObjectsToRemove = ['ComplianceFile', 'PackageSynchro', 'RegressionResult']
+        templateDeleteStr = "DELETE FROM regr_%s where release_id = %s;\n"
+
+        outfilename = "delete_release.sql"
+        outputFile = open(outfilename, 'w')
+        outputFile.write("BEGIN;\n")
+        for objName in dbObjectsToRemove:
+          outputFile.write(templateDeleteStr % (objName, releaseId))
+        outputFile.write("END;\n")
+        outputFile.close()
+
+        return self.__executeSqlOnDb__(outfilename)
 
     def __loadGenericData__(self, dbFileLoaderObj, runProcess=True):
         if runProcess:
@@ -227,6 +259,12 @@ select layer, directory_path, file_name, id from regr_regressionfile where code_
     #
     def loadRegressionFileData(self, regressionFileMgr, runProcess=True):
         return self.__loadGenericData__(regressionFileMgr, runProcess)
+
+    ###
+    # Remove a release
+    #
+    def removeReleaseRecords(self, release_id):
+        return self.__removeRelease__(release_id)
 
 ###############################################################################
 
@@ -341,7 +379,7 @@ class ComplianceParser(DbFileLoader):
         filename  = 'null'
         loggedVer = 'null'
         rcsVer    = 'null'
-        user      = 'null'
+        user      = None
         modDate   = 'null'
 
         if len(line_values_list) >= 3:
@@ -365,6 +403,7 @@ class ResponsibleParser(DbFileLoader):
 
     def __init__(self, fileDir):
         DbFileLoader.__init__(self, fileDir, "regr_responsibility.csv", "regr_responsibility.sql", "regr_responsibility")
+        self.deleteExistingRecords = True
         self.developersQuerySet = Developer.objects.all()
 
     def checkDeveloper(self, devName, devTeam):
@@ -494,22 +533,8 @@ def updateReleaseRecordWithStats(oRelease, statusTotals):
 ###
 # Main method
 #
-def main():
-    ###
-    # Check the arguments
-    #
-    if len(sys.argv) != 2:
-        print USAGE
-        sys.exit()
-
-    ###
-    # Check the directory exists and its name format
-    # The file dir should be of the format <project>.<branch>.<release> eg fm.DEV.25-0-219
-    #
-    fileDir = sys.argv[1];
-    if not os.path.isdir(fileDir):
-        print "Error: The given dir: %s does not exist." % fileDir
-        sys.exit()
+def main(fileDir):
+    (fProjectStr, fBranchStr, fReleaseStr) = fileDir.split(".")
 
     ###
     # read the version.txt file
@@ -530,19 +555,14 @@ def main():
     releaseDate = releaseDate.strip() # remove leading space
     print "Release version is: %s, release date is: %s" % (releaseVersion, releaseDate)
 
-    # Check for the presence of the compliance file to determine if we should process it or not
-    compliance_file = "compliance.csv"
-    parseComplianceData = False
-    if os.path.isfile(still_running_file_name):
-      parseComplianceData = True
-
     ###
     # Obtain any still running details
     # and update the release object
     #
-    still_running_file_name = "still_running.txt"
+
     running_str = ""
     running_list = []
+    still_running_file_name = "still_running.txt"
     if os.path.isfile(still_running_file_name):
       still_running_file = open(still_running_file_name)
       for srLine in still_running_file:
@@ -556,7 +576,7 @@ def main():
     #
     code_base_id = -1
     try:
-        oCodeBase = CodeBase.objects.get(project="fm", branch="DEV")
+        oCodeBase = CodeBase.objects.get(project=fProjectStr, branch=fBranchStr)
         code_base_id = oCodeBase.id
     except CodeBase.DoesNotExist:
         print "Code base not found"
@@ -572,6 +592,8 @@ def main():
     try:
         oRelease = Release.objects.get(code_base=code_base_id, name=releaseVersion)
         release_id = oRelease.id
+        print >> sys.stderr, "Warning this release is already loaded, exiting..."
+        sys.exit(0)
     except Release.DoesNotExist:
         timestring = releaseDate.replace(" UTC", "")
         time_format = "%Y-%m-%d %H:%M:%S"
@@ -644,24 +666,103 @@ def main():
     dbutil.loadPackageSyncData(None, release_id)
 
     # Process and Load the complinace data if present
-    if parseComplianceData:
+    # Check for the presence of the compliance file to determine if we should process it or not
+    compliance_file = "compliance.csv"
+    if os.path.isfile(compliance_file):
       dbutil.loadComplianceData(None, release_id)
 
     print "done"
 
-if __name__ == "__main__":
-    loadPkgDataOnly = False
-    loadComplianceData = False
-    if not loadPkgDataOnly:
-      main()
-    else:
-      fileDir = sys.argv[1];
-      if not os.path.isdir(fileDir):
-          print "Error: The given dir: %s does not exist." % fileDir
-          sys.exit()
-      dbutil = DatabaseUtil(fileDir, None, None)
-      if loadComplianceData:
-        dbutil.loadComplianceData(fileDir, 20)
-      else:
-        dbutil.loadPackageSyncData(fileDir, 17)
+def processCmdLineOpts():
+    '''Process the command line parameters'''
+    global cpReleaseNumber
+    global cpVerbose
+    global cpCompliance
+    global cpPackage
+    global cpResponsible
+    global cpDelete
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hvcprd", ["help", "compliance:", "package:", "responsible", "delete"])
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(1)
+    for o, a in opts:
+        if o == "-v":
+            cpVerbose = True
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif o in ("-c", "--compliance"):
+            cpCompliance = True
+            cpReleaseNumber = a
+        elif o in ("-p", "--package"):
+            cpPackage = True
+            cpReleaseNumber = a
+        elif o in ("-r", "--responsible"):
+            cpResponsible = True
+        elif o in ("-d", "--delete"):
+            cpDelete = True
+        else:
+            assert False, "unhandled option"
 
+    if cpCompliance or cpPackage or cpResponsible or cpDelete:
+      if len(args) == 0:
+        print usage()
+        sys.exit(1)
+
+    global cpFileDir
+    cpFileDir = args[0]
+    if not cpDelete:
+      if not os.path.isdir(cpFileDir):
+        print >> sys.stderr, "Error: The given dir: %s does not exist." % cpFileDir
+        sys.exit(1)
+
+
+# Globals:
+cpVerbose = False
+cpCompliance = False
+cpPackage = False
+cpResponsible = False
+cpReleaseNumber = -1
+cpDelete = False
+
+if __name__ == "__main__":
+
+    processCmdLineOpts()
+
+    if cpCompliance:
+      print "Loading Package compliance data for release: %s ..." % cpReleaseNumber
+      dbutil = DatabaseUtil(cpFileDir, None, None)
+      dbutil.loadComplianceData(cpFileDir, cpReleaseNumber)
+    elif cpPackage:
+      print "Loading Package synchro data for release: %s ..." % cpReleaseNumber
+      dbutil = DatabaseUtil(cpFileDir, None, None)
+      dbutil.loadPackageSyncData(cpFileDir, cpReleaseNumber)
+    elif cpResponsible:
+      print "Loading responsible data..."
+      dbutil = DatabaseUtil(None, None, None)
+      dbutil.loadResponsibleData()
+    elif cpDelete:
+      (fProjectStr, fBranchStr, fReleaseStr) = cpFileDir.split(".")
+      print "Deleting release: %s/%s/%s ..." % (fProjectStr, fBranchStr, fReleaseStr)
+
+      # retrieve the code base id
+      try:
+          oCodeBase = CodeBase.objects.get(project=fProjectStr, branch=fBranchStr)
+          code_base_id = oCodeBase.id
+      except CodeBase.DoesNotExist:
+          print >> sys.stderr, "Project not found"
+          sys.exit(1)
+      try:
+          oRelease = Release.objects.get(code_base=code_base_id, name=fReleaseStr)
+          release_id = oRelease.id
+      except Release.DoesNotExist:
+          print >> sys.stderr, "Release not found"
+          sys.exit(1)
+      dbutil = DatabaseUtil(cpFileDir, None, None)
+      dbutil.removeReleaseRecords(release_id)
+    else:
+      print "loading data for release: %s ..." % cpFileDir
+      main(cpFileDir)

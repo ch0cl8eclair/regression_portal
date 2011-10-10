@@ -1,0 +1,33 @@
+    {% extends "basevalidate.html" %}
+
+    {% block content %}
+    {# List responsiblitys #}
+    <h2>Responsibilities</h2>
+    {% if object_list %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Package</th>
+                    <th>Message</th>
+                    <th>Team</th>
+                    <th>Primary</th>
+                    <th>Secondary</th>
+                    <th>Area</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for responsiblity in object_list %}
+                <tr>
+                    <td>{{ responsiblity.package }}</td>
+                    <td>{{ responsiblity.message }}</td>
+                    <td>{{ responsiblity.team }}</td>
+                    <td>{{ responsiblity.primary }}</td>
+                    <td>{{ responsiblity.secondary }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <P>No responsiblities found.<P>
+    {% endif %}
+    {% endblock content %}

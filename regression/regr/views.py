@@ -1,14 +1,24 @@
+# Django imports
 from django.shortcuts import get_object_or_404, get_list_or_404, render_to_response, redirect
 from django.http import HttpResponseRedirect, HttpResponse, Http404
+from django.views.decorators.http import last_modified
+from django.db.models import Count
+
+# Models imports
 from regr.models import *
 from regr.utils import process_package_stats_list
-from django.db.models import Count
+
 # for the pie chart generation
-from pyofc2  import *
+from pyofc2 import *
+
+# Python imports
 import random
 import time
-from datetime import datetime, timedelta
 import urllib
+from datetime import datetime, timedelta
+
+
+
 
 class RegressionRequestWrapper:
     '''This class wraps the http url parameters and aids with the retrieval of the appropriate model objects'''
@@ -49,6 +59,12 @@ class RegressionRequestWrapper:
         ## TODO again check for null and return 404
         self.release_list = self.project.release_set.values()[:5]
         return self.release_list
+
+    def getLatestRelease(self):
+        '''Gets the latest release for the select project'''
+        self.getCodeBase()
+        latest_release = Release.objects.filter(code_base__exact=self.project.id)[0]
+        return latest_release
 
     def getRelease(self):
         '''Gets the specific release object'''
@@ -471,6 +487,16 @@ def display_results(request, project, branch, release, package=None, layer=None,
                                               'files_list' : files_list,
                                               'pkg_hash_list' : pkg_hash_list})
 
+def latest_release(request, project, branch):
+  '''Gets the date of the latest loaded release'''
+  paramWrapper = RegressionRequestWrapper(project, branch)
+  paramWrapper.getCodeBase()
+  latest_release = paramWrapper.getLatestRelease()
+  if latest_release is not None:
+    return latest_release.date
+  return None
+
+@last_modified(latest_release)
 def display_latest(request, project, branch):
     '''Redirects the user to the latest release for the given branch and project'''
     paramWrapper = RegressionRequestWrapper(project, branch)
