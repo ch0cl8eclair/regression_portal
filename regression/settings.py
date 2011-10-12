@@ -25,6 +25,7 @@ TOP_DIR = TOP_DIR_LOCAL.replace(os.sep, posixpath.sep)
 
 PROJECT_PATH_LIST = []
 PROJECT_PATH_LIST.append(REG_DIR)
+PROJECT_PATH_LIST.append(TOP_DIR)
 
 for mypath in PROJECT_PATH_LIST:
   if mypath not in sys.path:
