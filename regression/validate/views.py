@@ -43,14 +43,14 @@ def search_message(request):
           flagError = True
           errorMsg = "Invalid message format passed in: '%s'" % message
     except (KeyError, Responsibility.DoesNotExist):
-        flagError = True
-        errorMsg = "Invalid message format passed in: '%s'" % message
-
-    if not flagError and message is not None and len(selectedObjList) < 1:
         if message is not None:
-          errorMsg = "Failed to find results for entered message: '%s'" % message
+          flagError = True
+          errorMsg = "Invalid message format passed in: '%s'" % message
 
-    return render_to_response(SEARCH_MESSAGE_HTML, {'error_message' : errorMsg, 'object_list': selectedObjList})
+    if not flagError and message is not None and selectedObjList is not None and len(selectedObjList) < 1:
+        errorMsg = "Failed to find results for entered message: '%s'" % message
+
+    return render_to_response(SEARCH_MESSAGE_HTML, {'error_message' : errorMsg, 'message' : message, 'object_list': selectedObjList})
 
 USER_PATTERN = re.compile("[\w\d]{4,10}")
 
@@ -64,7 +64,7 @@ def search_user_message(request):
     isPrimary = True
 
     try:
-        user = str(request.GET['user'])
+        user = request.GET['user']
         try:
           primaryStr = str(request.GET['isprimary'])
           isPrimary = (primaryStr.upper() == "TRUE")
@@ -88,15 +88,14 @@ def search_user_message(request):
             selectedObjList = Responsibility.objects.filter(secondary__exact=user)
 
     except (KeyError, Responsibility.DoesNotExist):
-        flagError = True
-        errorMsg = "Failed to find an messages for user: '%s'" % user
+        if user is not None:
+          flagError = True
+          errorMsg = "Failed to find an messages for user: '%s'" % user
 
-
-    print >> sys.stderr, "flag error: %s, user: %s, length of obj: %d" % (str(flagError), user, len(selectedObjList))
-    if not flagError and user is not None and len(selectedObjList) < 1:
+    if not flagError and user is not None and selectedObjList is not None and len(selectedObjList) < 1:
         errorMsg = "Failed to find any messages for user: '%s'" % user
 
-    return render_to_response(SEARCH_USERMESSAGE_HTML, {'error_message' : errorMsg, 'object_list': selectedObjList})
+    return render_to_response(SEARCH_USERMESSAGE_HTML, {'error_message' : errorMsg, 'user': user, 'isprimary': isPrimary, 'object_list': selectedObjList})
 
 
 HOST_PATTERN = re.compile("LON.(\w+)\d*")

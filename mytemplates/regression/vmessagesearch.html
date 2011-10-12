@@ -3,11 +3,11 @@
     {% block content %}
     {# List responsiblitys #}
     <h2>Search for Message</h2>
-    
+
     {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
-    
+
     <form name="messagesearch" action="/validate/message/" method="get">
-        Message: <input type="text" name="message" /><br />
+        Message: <input type="text" name="message" value="{{ message }}"/><br />
         <input type="submit" value="Search" />
     </form>
     <hr>
