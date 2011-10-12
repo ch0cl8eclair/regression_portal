@@ -67,7 +67,7 @@
                     <td>{{ reg_params.release_stats.1 }}</td>
                     <td>{{ reg_params.release_stats.2 }}</td>
                     <td>{{ reg_params.release_stats.3 }}</td>
-                    <td>{{ reg_params.release_stats.4|default:0 }}</td>
+                    <td>{{ reg_params.release_stats.4|default_if_none:0 }}</td>
                 </tr>
             </table>
         {% endif %}

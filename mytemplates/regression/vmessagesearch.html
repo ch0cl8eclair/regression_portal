@@ -7,7 +7,7 @@
     {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
 
     <form name="messagesearch" action="/validate/message/" method="get">
-        Message: <input type="text" name="message" value="{{ message }}"/><br />
+        Message: <input type="text" name="message" value="{{ message|default_if_none:"" }}"/><br />
         <input type="submit" value="Search" />
     </form>
     <hr>

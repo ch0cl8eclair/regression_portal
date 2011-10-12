@@ -20,8 +20,8 @@
                     <td class=cfilename>{{compliance_file.filename}}</td>
                     <td class=clogged>{{compliance_file.logged_version}}</td>
                     <td class=crcs>{{compliance_file.rcs_version}}</td>
-                    <td class=cuser>{{compliance_file.user|default:""}}</td>
-                    <td class=cdate>{{compliance_file.date|default:""}}</td>
+                    <td class=cuser>{{compliance_file.user|default_if_none:""}}</td>
+                    <td class=cdate>{{compliance_file.date|default_if_none:""}}</td>
                 </tr>
             {% endfor %}
             </tbody>
