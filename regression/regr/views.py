@@ -2,6 +2,7 @@
 from django.shortcuts import get_object_or_404, get_list_or_404, render_to_response, redirect
 from django.http import HttpResponseRedirect, HttpResponse, Http404
 from django.views.decorators.http import last_modified
+from django.views.decorators.cache import cache_control
 from django.db.models import Count
 
 # Models imports
@@ -296,6 +297,15 @@ LIST_LAYERS_HTML = 'listlayers.html'
 LIST_DIRS_HTML = 'listdirs.html'
 COMPLIANCE_HTML = 'compliance.html'
 
+def latest_release(request, project, branch):
+  '''Gets the date of the latest loaded release'''
+  paramWrapper = RegressionRequestWrapper(project, branch)
+  paramWrapper.getCodeBase()
+  latest_release = paramWrapper.getLatestRelease()
+  if latest_release is not None:
+    return latest_release.date
+  return None
+
 ###############################################################################
 # Main list data requests
 ###############################################################################
@@ -319,6 +329,8 @@ def list_branches(request, project):
     paramWrapper.getBranchList()
     return render_to_response(LIST_CODEBASES_HTML, {'reg_params': paramWrapper})
 
+@last_modified(latest_release)
+@cache_control(must_revalidate=True, max_age=3600)
 def list_releases(request, project, branch):
     '''Lists all releases for the selected branch ie 24-0-219 etc'''
     paramWrapper = RegressionRequestWrapper(project, branch)
@@ -487,16 +499,9 @@ def display_results(request, project, branch, release, package=None, layer=None,
                                               'files_list' : files_list,
                                               'pkg_hash_list' : pkg_hash_list})
 
-def latest_release(request, project, branch):
-  '''Gets the date of the latest loaded release'''
-  paramWrapper = RegressionRequestWrapper(project, branch)
-  paramWrapper.getCodeBase()
-  latest_release = paramWrapper.getLatestRelease()
-  if latest_release is not None:
-    return latest_release.date
-  return None
 
 @last_modified(latest_release)
+@cache_control(must_revalidate=True, max_age=3600)
 def display_latest(request, project, branch):
     '''Redirects the user to the latest release for the given branch and project'''
     paramWrapper = RegressionRequestWrapper(project, branch)

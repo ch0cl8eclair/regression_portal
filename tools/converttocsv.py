@@ -391,7 +391,9 @@ class ComplianceParser(DbFileLoader):
             modDate = self.setDateTimeValue(line_values_list[4])
           if user is not None:
             user = "'%s'" % user
-          outputDataLine = "null, %d, '%s', '%s', '%s', %s, %s" % (self.release_id, filename, loggedVer, rcsVer, user, modDate)
+          else:
+            user = 'null'
+          outputDataLine = "null, %s, '%s', '%s', '%s', %s, %s" % (self.release_id, filename, loggedVer, rcsVer, user, modDate)
         print "Output line: %s" % outputDataLine
         return outputDataLine
 
@@ -682,7 +684,7 @@ def processCmdLineOpts():
     global cpResponsible
     global cpDelete
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hvcprd", ["help", "compliance:", "package:", "responsible", "delete"])
+        opts, args = getopt.getopt(sys.argv[1:], "hvc:prd", ["help", "compliance=", "package=", "responsible", "delete"])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
