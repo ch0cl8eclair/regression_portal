@@ -9,39 +9,39 @@
               {"data-file":"/data/pie/{{ reg_params.release.id }}"} );
         </script>
     {% endblock customhead %}
-    
+
     {% block pagename%}Release details{% endblock pagename %}
-    
+
     {% block pagecontent %}
     <div>
         <div class="summary_wrapper">
-        	<table class="summary" cellpadding="3" cellspacing="4">
+          <table class="summary" cellpadding="3" cellspacing="4">
                 <tr>
                     <td class="sumheading">Release</td>
-					<td class="sumvalue">{{ reg_params.release.name }}</td>
-				</tr>
+          <td class="sumvalue">{{ reg_params.release.name }}</td>
+        </tr>
                 <tr>
                     <td class="sumheading">Branch</td>
                     <td class="sumvalue">{{ reg_params.branchStr }}</td>
-				</tr>
+        </tr>
                 <tr>
-					<td class="sumheading">Date</td>
+          <td class="sumheading">Date</td>
                     <td class="sumvalue">{{ reg_params.release.date|date:'D jS M Y, G:i' }}</td>
-				</tr>
+        </tr>
                 <tr>
-					<td class="sumheading">Tag</td>
+          <td class="sumheading">Tag</td>
                     <td class="sumvalue">{{ reg_params.branchStr }}_{{ reg_params.release.name }}</td>
-				</tr>
+        </tr>
             </table>
             <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/?type=package_fail">[view package failures]</a>
             <p>
             <p>
             <ul class="releaseWarnings">
             {% if reg_params.compliance_warning %}
-            <li>Warning compliance failures exist</li>
+            <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/Compliance">Warning compliance failures exist</a></li>
             {% endif %}
-            {% if reg_params.project.comment %}
-            <li>{{ project.comment }}</li>
+            {% if reg_params.release.comment %}
+            <li>{{ reg_params.release.comment }}</li>
             {% endif %}
             </ul>
         </div>
@@ -74,8 +74,8 @@
         </div>
     </div>
     <div style="width: 600px; float: left;text-align: left;">
-    
-    
+
+
     {% if dirs_hash %}
         <p>Directories</p>
         <table>
@@ -101,13 +101,13 @@
             </tbody>
         </table>
     {% endif %}
-    
+
     <br>
 
     {% if files_list %}
         <p>{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}/{{ reg_params.directoryStr }}</p>
         <p>Files:</p>
-        
+
         <table>
         {% for file in files_list %}
             <tr><td><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ package }}/{{ layer }}/{{ directory }}/{{ file.file.file_name }}" target="_blank">{{ file.file.file_name }}</a></td><td>{{file.getStatusAsStr}}</td></tr>

@@ -17,7 +17,7 @@
             <tbody>
                 {% for developer in object_list %}
                 <tr>
-                    <td>{{ developer.username }}</td>
+                    <td><a href="/validate/usermessage/?user={{ developer.username }}">{{ developer.username }}</a></td>
                     <td>{{ developer.firstname }}</td>
                     <td>{{ developer.surname }}</td>
                     <td>{{ developer.team }}</td>
