@@ -1,0 +1,59 @@
+    {% extends "basedetails.html" %}
+
+    {% block pagename %}Comparision{% endblock pagename %}
+
+    {% block pagecontent %}
+
+    <div>
+    <br>
+    <h3>Regression comparison between current: {{reg_params.releaseStr}} and previous {{previous_release}}</h3>
+    <br>
+    {% if packages_comparison %}
+        <div>
+        
+        <table class="release_diffs" cellpadding="3" cellspacing="0">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="package" >Pacakge</th>
+                    <th colspan="3" class="failures" >Failures</th>
+                    <th colspan="3" class="pass" >Pass</th>
+                    <th colspan="3" class="totals" >Totals</th>
+                </tr>
+                <tr>
+                    <th class="previous">Previous</th><th class="current">Current</th><th class="diff">Diff</th>
+                    <th class="previous">Previous</th><th class="current">Current</th><th class="diff">Diff</th>
+                    <th class="previous">Previous</th><th class="current">Current</th><th class="diff">Diff</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% for comparison in packages_comparison %}
+                <tr>
+                    <td class="name">{{comparison.name}}</td>
+                    
+                    <td>{{comparison.previousFail}}</td>
+                    <td>{{comparison.currentFail}}</td>
+                    <td class="{% if comparison.failDiff > 0 %}trendNeg{%else%}{% if comparison.failDiff < 0 %}trendPos{% endif %}{% endif %}">{{comparison.failDiff}}</td>
+                    
+                    <td>{{comparison.previousPass}}</td>
+                    <td>{{comparison.currentPass}}</td>
+                    <td class="{% if comparison.passDiff < 0 %}trendNeg{% else %} {% if comparison.passDiff > 0 %}trendPos{% endif %} {% endif %}">{{comparison.passDiff}}</td>
+                    
+                    <td>{{comparison.previousTotal}}</td>
+                    <td>{{comparison.currentTotal}}</td>
+                    <td class="{% if comparison.totalDiff < 0 %}trendNeg{% else %} {% if comparison.totalDiff > 0 %}trendPos{% endif %}{% endif %}">{{ comparison.totalDiff }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <br>
+        <p>To view source changes committed between the two releases click:
+        <span class="rgbutton"><a href="{{ reg_params.getReleaseDiffCVSURL }}">Source Changes</a></span>
+        </div>
+    {% else %}
+        <p>No Source File Data recorded for release.
+    {% endif %}
+    </div>
+
+    <div style="clear: both"></div>
+    {% endblock pagecontent %}

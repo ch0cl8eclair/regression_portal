@@ -1,0 +1,71 @@
+
+<html>
+<head>
+    <script>
+function reload()
+{
+    tmp = findSWF("chart");
+    x = tmp.reload();
+}
+
+function reload_3()
+{
+    tmp = findSWF("chart");
+    x = tmp.reload("gallery-data-32.php?beer=1");
+}
+
+function reload_4()
+{
+    tmp = findSWF("chart");
+    x = tmp.reload("gallery-data-32.php?earnings=1");
+}
+
+function reload_2()
+{
+    tmp = findSWF("chart");
+    x = tmp.reload("gallery-data-26.php");
+}
+
+
+function findSWF(movieName) {
+  if (navigator.appName.indexOf("Microsoft")!= -1) {
+    return window["ie_" + movieName];
+  } else {
+    return document[movieName];
+  }
+}
+</script>
+</head>
+<body>
+
+<p>Hello World</p>
+
+
+<div id="flashcontent_2"></div>
+<script type="text/javascript">
+var so = new SWFObject("/static/open-flash-chart.swf", "chart_2", "500", "250", "9", "#FFFFFF");
+so.addVariable("data", "http%3A%2F%2Fteethgrinder.co.uk%2Fopen-flash-chart%2Ftutorial-data-2.php");
+so.addParam("allowScriptAccess", "sameDomain");
+so.write("flashcontent_2");
+</script>
+
+<noscript>
+<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" 
+width="500" height="250" id="ie_chart_2" align="middle">
+<param name="allowScriptAccess" value="sameDomain" />
+<param name="movie" value="/static/open-flash-chart.swf?data=http%3A%2F%2Fteethgrinder.co.uk%2Fopen-flash-chart%2Ftutorial-data-2.php" />
+<param name="quality" value="high" />
+<param name="bgcolor" value="#FFFFFF" />
+<embed src="/static/open-flash-chart.swf?data=http%3A%2F%2Fteethgrinder.co.uk%2Fopen-flash-chart%2Ftutorial-data-2.php" quality="high" bgcolor="#FFFFFF" width="500" height="250" name="chart_2" align="middle" allowScriptAccess="sameDomain" 
+type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" id="chart_2"/>
+</object>
+</noscript>
+
+    <ul>
+    <li><a href="javascript:reload();">reload</a></li>
+    <li><a href="javascript:reload_3();">show beer</a></li>
+    <li><a href="javascript:reload_4();">earnings</a></li>
+    </ul>
+    
+</body>
+</html>

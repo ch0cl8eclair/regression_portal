@@ -1,0 +1,39 @@
+    {% extends "basedetails.html" %}
+
+    {% block pagename %}Synchronisation{% endblock pagename %}
+
+    {% block pagecontent %}
+
+    <div>
+    <br>
+    <h3>Host Synchronisation Details</h3>
+    <br>
+    {% if object_list %}
+        <div>
+        <table class="synchro_files" >
+            <thead>
+            <tr>
+            <th>Package</th><th>Layer</th><th>Host</th><th>Start Date</th><th>Start Time</th><th>End Date</th><th>End Time</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for obj in object_list %}
+                <tr>
+                    <td class=cpsPackage>{{obj.package}}</td>
+                    <td class=cpsLayer>{{obj.layer}}</td>
+                    <td class=cpsHost>{{obj.host}}</td>
+                    <td class=cpsStartDate>{{obj.start_date|default_if_none:""}}</td>
+                    <td class=cpsStartTime>{{obj.start_time|default_if_none:""}}</td>
+                    <td class=cpsEndDate>{{obj.end_date|default_if_none:""}}</td>
+                    <td class=cpsEndTime>{{obj.end_time|default_if_none:""}}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    {% else %}
+        <p>No Package Syncho data found for current release.
+    {% endif %}
+    </div>
+    <div style="clear: both"></div>
+    {% endblock pagecontent %}
