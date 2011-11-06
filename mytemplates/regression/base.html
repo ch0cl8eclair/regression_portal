@@ -15,6 +15,7 @@
 </head>
 
 <body>
+    <a name="top"></a>
     <div id="container">
 		<div id="header">
         	<h1>FM<span class="off">Monkey</span></h1>
@@ -25,14 +26,14 @@
             {% block top_menu %}
         	<div id="menuspacer">
                 <ul id="navlist">
-                  <li id="home"><a href="/regression"></a></li>
-                  <li id="help"><a href="/regression/help"></a></li>
+                  <li id="home"><a href="{{ reg_params.getBaseURL }}" title="Home"></a></li>
+                  <li id="help"><a href="{{ reg_params.getHelpURL }}" title="Help"></a></li>
                   {% if reg_params.project.branch %}
-                  <li id="bar"><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/ReleaseTotals/"></a></li>
-                  <li id="line"><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/ReleasePassRate/"></a></li>
+                  <li id="bar"><a href="{{ reg_params.getReleaseTotalsURL }}" title="Data"></a></li>
+                  <li id="line"><a href="{{ reg_params.getReleasePassRateURL }}" title="Trends"></a></li>
                   {% endif %}
                   {% if reg_params.release %}
-                  <li id="pie"><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/"></a></li>
+                  <li id="pie"><a href="{{ reg_params.getReleaseURL }}" title="Release"></a></li>
                   {% endif %}
                 </ul>
             </div>
@@ -55,7 +56,7 @@
         </div>
         
 		<div id="content">
-        <a name="top"></a>
+        <a name="results"></a>
         <div id="content_top"></div>
         <div id="content_main">
             {% block content %}
@@ -77,7 +78,7 @@
         
         <div id="content_bottom"></div>
             {% block footer %}
-            <div id="footer"><h3><a href="#top">Top</a> | <a href="/regression/">Home</a>  | <a href="/">Fm Monkey Home</a></h3></div>
+            <div id="footer"><h3><a href="#top">Top</a> | <a href="{{ reg_param.getBaseURL }}">Home</a>  | <a href="/">Fm Monkey Home</a></h3></div>
             {% endblock %}
       </div>
    </div>

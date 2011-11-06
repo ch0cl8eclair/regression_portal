@@ -10,7 +10,7 @@
                 <p>The following projects are available to view:</p>
                 <ul>
                 {% for proj in reg_params.project_list %}
-                    <li><a href="/regression/{{ proj.project }}/{{ proj.branch }}/">{{ proj.project }} {{proj.branch}}</a></li>
+                    <li><a href="{{ reg_params.getBaseURL }}{{ proj.project }}/{{ proj.branch }}">{{ proj.project }} {{proj.branch}}</a></li>
                 {% endfor %}
                 </ul>
             {% else %}

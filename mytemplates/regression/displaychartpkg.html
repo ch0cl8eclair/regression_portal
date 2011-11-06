@@ -4,7 +4,7 @@
     <script type="text/javascript" src="/static/swfobject.js"></script>
     <script type="text/javascript">
     	swfobject.embedSWF(
-    	  "/static/open-flash-chart.swf", "chart_demo",
+    	  "/static/open-flash-chart.swf", "chart",
     	  "650", "600", "9.0.0", "/static/expressInstall.swf",
     	  {"data-file":"/data/{{ chart_type }}/{{ reg_params.release.id }}"} );
     </script>
@@ -12,10 +12,11 @@
 
     {% block content %}
     {# display the pie chart for the release #}
-    <div class="chart" id="chart_demo"></div>
+    <div class="chart" id="chart"></div>
+    
     <p>
-        <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}">[Back to release view]</a>
-        <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/?type=package_fail">[Package Failures]</a>
+        <a href="{{ reg_params.getReleaseURL }}">[Back to release view]</a>
+        <a href="{{ reg_params.getReleaseURL }}?type=package_fail">[Package Failures]</a>
     </p>
     {% endblock content %}
     

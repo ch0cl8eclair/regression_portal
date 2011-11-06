@@ -4,10 +4,14 @@
     {# List responsiblitys #}
     <h2>Search for Message</h2>
 
-    {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+    <form name="messagesearch" action="." method="get">
+        {% if form.errors %}
+        <p style=".error">
+            {{ form.errors|pluralize }}
+        </p>
+        {% endif %}
 
-    <form name="messagesearch" action="/validate/message/" method="get">
-        Message: <input type="text" name="message" value="{{ message|default_if_none:"" }}"/><br />
+        {{ form.as_p }}
         <input type="submit" value="Search" />
     </form>
     <hr>

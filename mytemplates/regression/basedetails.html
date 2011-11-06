@@ -14,15 +14,15 @@
             <ul>
             <li><P><span class="left">Package</span><span class="right">Fail</span><span class="right">Tot.</span></li>
             {% for pkghash in pkg_hash_list %}
-                <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkghash.items.0.0 }}/"><span class="left">{{ pkghash.items.0.0 }}</span><span class="right">{{ pkghash.items.0.1.fail }}</span><span class="right">{{ pkghash.items.0.1.total|default_if_none:0 }}</span></a></li>
+                <li><a href="{{ reg_params.getReleaseURL }}{{ pkghash.items.0.0 }}/"><span class="left">{{ pkghash.items.0.0 }}</span><span class="right">{{ pkghash.items.0.1.fail }}</span><span class="right">{{ pkghash.items.0.1.total|default_if_none:0 }}</span></a></li>
                 {% if pkghash.items.0.1.layers %}
                     <ul>
                     {% for layerhash in pkghash.items.0.1.layers %}
-                        <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkghash.items.0.0 }}/{{ layerhash.items.0.0 }}"><span class="left">{{ layerhash.items.0.0 }}</span><span class="right">{{ layerhash.items.0.1.fail }}</span><span class="right">{{ layerhash.items.0.1.total|default_if_none:0 }}</span></a></li>
+                        <li><a href="{{ reg_params.getReleaseURL }}{{ pkghash.items.0.0 }}/{{ layerhash.items.0.0 }}"><span class="left">{{ layerhash.items.0.0 }}</span><span class="right">{{ layerhash.items.0.1.fail }}</span><span class="right">{{ layerhash.items.0.1.total|default_if_none:0 }}</span></a></li>
                         {% if layerhash.items.0.1.dirs %}
                             <ul>
                             {% for dirhash in layerhash.items.0.1.dirs %}
-                                <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkghash.items.0.0 }}/{{ layerhash.items.0.0 }}/{{ dirhash.items.0.0 }}"><span class="left">{{ dirhash.items.0.0 }}</span><span class="right">{{ dirhash.items.0.1.fail }}</span><span class="right">{{ dirhash.items.0.1.total|default_if_none:0 }}</span></a></li>
+                                <li><a href="{{ reg_params.getReleaseURL }}{{ pkghash.items.0.0 }}/{{ layerhash.items.0.0 }}/{{ dirhash.items.0.0 }}"><span class="left">{{ dirhash.items.0.0 }}</span><span class="right">{{ dirhash.items.0.1.fail }}</span><span class="right">{{ dirhash.items.0.1.total|default_if_none:0 }}</span></a></li>
                             {% endfor %}
                             </ul>
                         {% endif %}
@@ -34,7 +34,7 @@
         {% else %}
             <ul>
             {% for pkg in reg_params.packages_list %}
-                <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ pkg }}/">{{ pkg }}</a></li>
+                <li><a href="{{ reg_params.getReleaseURL }}{{ pkg }}/">{{ pkg }}</a></li>
             {% endfor %}
             </ul>
         {% endif %}
@@ -48,19 +48,19 @@
             {% if reg_params.projectStr %}
 
                 {% if reg_params.branchStr %}
-                    <a href="/regression/{{ reg_params.project.project }}">{{ reg_params.project.project|upper }}</a>
+                    <a href="{{ reg_params.getProjectURL }}">{{ reg_params.project.project|upper }}</a>
 
                     {% if reg_params.release %}
-                        <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}">{{ reg_params.branchStr|upper }}</a>
+                        <a href="{{ reg_params.getBranchURL }}">{{ reg_params.branchStr|upper }}</a>
 
                         {% if reg_params.packageStr %}
-                            <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}">{{ reg_params.release.name }}</a>
+                            <a href="{{ reg_params.getReleaseURL }}">{{ reg_params.release.name }}</a>
 
                             {% if reg_params.layerStr %}
-                                <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}">{{ reg_params.packageStr }}</a>
+                                <a href="{{ reg_params.getPackageURL }}">{{ reg_params.packageStr }}</a>
 
                                 {% if reg_params.directoryStr %}
-                                    <a href="/regression/{{ reg_params.project.project }}/{{ reg_params.branchStr }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ reg_params.layerStr }}">{{ reg_params.layerStr }}</a>
+                                    <a href="{{ reg_params.getLayerURL }}">{{ reg_params.layerStr }}</a>
                                     {% if reg_params.directoryStr %}
                                         {{ reg_params.directoryStr|upper }}
                                     {% endif %}

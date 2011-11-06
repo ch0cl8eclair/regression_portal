@@ -9,9 +9,9 @@ body {
   font: 12px Arial, Helvetica, sans-serif;
   font-size: 13px;
   color: #061C37;
-  background: #CCCC00;
-/*  background-image:url(images/background.png); */
-/*  background-repeat:repeat-x; */
+  #background: #CCCC00;
+  background-image:url(images/background.png); 
+  background-repeat:repeat-x; 
 }
 *
 {
@@ -174,7 +174,7 @@ font-size:12px;
 font-weight:bold;
 }
 
-#leftmenu_main ul li a, #leftmenu_main ul li a:visited
+#leftmenu_main ul li a, #leftmenu_main ul li a
 {
 display:block;
 list-style: none;
@@ -197,6 +197,13 @@ font-weight:bold;
 {
 color:#000000;
 }
+
+#leftmenu_main ul li a:visited
+{
+//color:#800080;
+color:#bd07bd;
+}
+
 
 #content
 {

@@ -2,6 +2,12 @@
 
     {% block title %}Validate{% endblock %}
     
+    {% block head %}
+        <link rel="stylesheet" type="text/css" href="/static/local.css" />
+        {% block customhead %}
+        {% endblock customhead %}
+    {% endblock head %}
+    
     {# Populate the sidebar with no links #}
     {% block sidebar %}
         <ul>

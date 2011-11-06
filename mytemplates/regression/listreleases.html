@@ -9,7 +9,7 @@
             {% if reg_params.release_list %}
                 <ul>
                 {% for rel in reg_params.release_list %}
-                    <li><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ rel.name }}/">{{ rel.name }}</a></li>
+                    <li><a href="{{ reg_params.getBranchURL }}{{ rel.name }}">{{ rel.name }}</a></li>
                 {% endfor %}
                 </ul>
             {% else %}

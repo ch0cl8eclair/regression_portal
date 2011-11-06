@@ -47,7 +47,7 @@
                     <tr>
                         <td class=cpackage>{{compliance_folder.file__package}}</td>
                         <td class=clayer>{{compliance_folder.file__layer}}</td>
-                        <td class=cdirectory><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ compliance_folder.file__package }}/{{ compliance_folder.file__layer }}/{{ compliance_folder.file__directory_path }}">{{compliance_folder.file__directory_path}}</a></td>
+                        <td class=cdirectory><a href="{{ reg_params.getReleaseURL }}/{{ compliance_folder.file__package }}/{{ compliance_folder.file__layer }}/{{ compliance_folder.file__directory_path }}">{{compliance_folder.file__directory_path}}</a></td>
                         <td class=cfail>{{compliance_folder.file__directory_path__count}}</td>
                     </tr>
                 {% endfor %}

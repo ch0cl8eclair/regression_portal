@@ -8,8 +8,8 @@
 
     <form name="usermessagesearch" action="/validate/usermessage/" method="get">
         User: <input type="text" name="user" value="{{ user|default_if_none:"" }}"/>
-        <input type="radio" name="isprimary" value="true"  {{ isprimary|yesno:"checked,,checked" }} /> Primary
-        <input type="radio" name="isprimary" value="false" {{ isprimary|yesno:",checked," }} /> Secondary<br />
+        <input type="radio" name="isprimary" value="true"  {{ isprimary|yesno:"checked=checked,,checked=checked" }} /> Primary
+        <input type="radio" name="isprimary" value="false" {{ isprimary|yesno:",checked=checked," }} /> Secondary<br />
         <input type="submit" value="Search" />
     </form>
     <hr>

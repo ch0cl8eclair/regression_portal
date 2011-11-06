@@ -19,8 +19,8 @@
             <tbody>
             {% for layerhash in sel_pkg_hash.layers %}
                 <tr>
-                    <td class=lname><a href="/regression/{{ reg_params.project.project }}/{{ reg_params.project.branch }}/{{ reg_params.release.name }}/{{ reg_params.packageStr }}/{{ layerhash.items.0.0 }}" >{{ layerhash.items.0.0 }}</a></td>
-                    <td class=lfail>{{layerhash.items.0.1.fail}}</td>
+                    <td class=lname><a href="{{ reg_params.getPackageURL }}{{ layerhash.items.0.0 }}" >{{ layerhash.items.0.0 }}</a></td>
+                    <td class="{% if layerhash.items.0.1.fail > 0 %}lfail{% endif %}">{{ layerhash.items.0.1.fail }}</td>
                     <td class=lpass>{{layerhash.items.0.1.pass}}</td>
                     <td class=ltotal>{{layerhash.items.0.1.total}}</td>
                 </tr>

@@ -33,6 +33,9 @@ class Release(models.Model):
     def __unicode__(self):
         return "%s, %s, %s, %s" %(self.id, self.code_base, self.name, self.date.strftime("%d %m %y"))
 
+    def getBasicDateStr(self):
+        return self.date.strftime("%d %m %y")
+        
     def initialise_counters(self):
         self.total_files = 0
         self.total_pass = 0
@@ -155,7 +158,7 @@ class PackageSynchro(models.Model):
     end_time = models.CharField(max_length = 6, null=True, blank=True)
 
     class Meta:
-        ordering = ['release', 'package', 'layer']
+        ordering = ['release', 'package', 'layer', 'host']
 
     def __unicode__(self):
         return "PkgSync %s %s %s %s [%s %s] [%s %s]" %(self.release.id, self.package, self.layer, self.host, self.start_date, self.start_time, self.end_date, self.end_time)
